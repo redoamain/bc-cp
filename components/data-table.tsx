@@ -55,6 +55,7 @@ const JENIS_DOKUMEN_OPTIONS = [
   { value: "BC 2.0", label: "BC 2.0" },
   { value: "BC 2.3", label: "BC 2.3" },
   { value: "BC 2.7", label: "BC 2.7" },
+  { value: "BC 3.0", label: "BC 3.0" },
   { value: "BC 4.0", label: "BC 4.0" },
 ];
 
