@@ -2,7 +2,7 @@
 
 "use client";
 
-import { useEffect, useState, useMemo, useCallback } from "react";
+import { useEffect, useState, useCallback } from "react";
 import * as XLSX from "xlsx";
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
@@ -316,9 +316,9 @@ export default function PengeluaranPage() {
         {/* Header with Debug Button */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
-            <h1 className="text-3xl font-bold">Data Pengeluaran</h1>
+            <h1 className="text-3xl font-bold">Data Pengeluaran Pembelian</h1>
             <p className="text-muted-foreground">
-              Laporan pengeluaran barang periode {formatDate(tgl1)} -{" "}
+              Laporan pengeluaran Retur Pembelian barang periode {formatDate(tgl1)} -{" "}
               {formatDate(tgl2)}
             </p>
             <p className="text-xs text-muted-foreground mt-1">
@@ -326,14 +326,7 @@ export default function PengeluaranPage() {
             </p>
           </div>
           <div className="flex gap-2">
-            <Button
-              variant="outline"
-              onClick={() => setShowDebug(!showDebug)}
-              className="gap-2"
-            >
-              <Bug className="h-4 w-4" />
-              Debug
-            </Button>
+          
             <Button
               variant="outline"
               onClick={() => fetchData(tgl1, tgl2)}
@@ -403,7 +396,7 @@ export default function PengeluaranPage() {
             <Card>
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="text-sm font-medium text-muted-foreground">
-                  Total USD
+                  Total Transaksi dengan CUR USD
                 </CardTitle>
                 <DollarSign className="h-4 w-4 text-blue-500" />
               </CardHeader>
@@ -433,7 +426,7 @@ export default function PengeluaranPage() {
             <Card>
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="text-sm font-medium text-muted-foreground">
-                  Total IDR
+                  Total Transaksi dengan CUR IDR
                 </CardTitle>
                 <DollarSign className="h-4 w-4 text-green-500" />
               </CardHeader>

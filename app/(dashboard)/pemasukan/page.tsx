@@ -398,7 +398,7 @@ export default function PemasukanPage() {
             <Card>
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="text-sm font-medium text-muted-foreground">
-                  Total USD
+                  Total Transaksi dengan CUR USD
                 </CardTitle>
                 <DollarSign className="h-4 w-4 text-blue-500" />
               </CardHeader>
@@ -428,7 +428,7 @@ export default function PemasukanPage() {
             <Card>
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="text-sm font-medium text-muted-foreground">
-                  Total IDR
+                  Total Transaksi dengan CUR IDR
                 </CardTitle>
                 <DollarSign className="h-4 w-4 text-green-500" />
               </CardHeader>

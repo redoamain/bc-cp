@@ -68,9 +68,7 @@ export default function Home() {
                 <p className="flex items-center justify-center gap-2">
                   <Package className="w-4 h-4" /> Laporan Pengeluaran
                 </p>
-                <p className="flex items-center justify-center gap-2">
-                  <ArrowRight className="w-4 h-4" /> Mutasi Bahan Baku
-                </p>
+               
               </div>
             </CardContent>
             <CardFooter>
