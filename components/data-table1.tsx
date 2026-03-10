@@ -52,10 +52,9 @@ interface DataTableProps<TData, TValue> {
 // Pilihan jenis dokumen tetap
 const JENIS_DOKUMEN_OPTIONS = [
   { value: "all", label: "Semua Jenis Dokumen" },
-  { value: "BC 2.0", label: "BC 2.0" },
-  { value: "BC 2.3", label: "BC 2.3" },
+  { value: "BC 2.5", label: "BC 2.5" },
   { value: "BC 2.7", label: "BC 2.7" },
-  { value: "BC 4.0", label: "BC 4.0" },
+  { value: "BC 3.0", label: "BC 3.0" },
 ];
 
 export function DataTable<TData, TValue>({

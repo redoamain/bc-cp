@@ -9,7 +9,7 @@ import { id } from "date-fns/locale";
 import { PengeluaranType } from "@/lib/types";
 import { getPengeluaran } from "@/lib/services/pengeluaranService";
 import { columns } from "@/components/pengeluaran/colomns";
-import { DataTable } from "@/components/data-table";
+import { DataTable } from "@/components/data-table1";
 import { FilterTanggal } from "@/components/filter-tanggal";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
