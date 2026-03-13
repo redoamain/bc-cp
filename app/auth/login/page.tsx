@@ -28,7 +28,7 @@ export default function LoginPage() {
   useEffect(() => {
     const user = localStorage.getItem("user");
     if (user) {
-      router.push("/home");
+      router.push("/dashboard");
     }
   }, [router]);
 
@@ -98,7 +98,7 @@ export default function LoginPage() {
 
         // Redirect setelah semua proses selesai
         setTimeout(() => {
-          router.push("/home");
+          router.push("/dashboard");
         }, 100);
       } else {
         setError(data.error || "Login gagal");
@@ -113,7 +113,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex justify-center items-center h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+    <div className="flex justify-center items-center h-screen bg-linear-to-br from-blue-50 to-indigo-100">
       <form onSubmit={handleSubmit} className="w-full max-w-md px-4">
         <Card className="shadow-xl border-0">
           <CardHeader className="space-y-1">

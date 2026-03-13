@@ -350,7 +350,8 @@ export default function DashboardPage() {
           <CardContent className="p-6">
             <div className="text-center">
               <h2 className="text-xl font-semibold mb-2">
-                Welcome to the Dashboard
+            
+                Welcome to the Home Dashboard
               </h2>
               <p className="text-gray-600">
                 Sistem Inventory Beacukai - Pantau stok barang dengan mudah dan

@@ -1,0 +1,108 @@
+{
+  "name": "Portal Beacukai PT. CITI PLUMB",
+  "short_name": "Portal Beacukai",
+  "description": "Aplikasi terintegrasi untuk manajemen IT Inventory dan monitoring CCTV PT. CITI PLUMB",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#2563eb",
+  "orientation": "any",
+  "scope": "/",
+  "categories": ["business", "productivity", "utilities"],
+  "lang": "id-ID",
+  "dir": "ltr",
+  "prefer_related_applications": false,
+
+  "icons": [
+    {
+      "src": "/img/citiplumb.jpg",
+      "sizes": "72x72",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/img/citiplumb.jpg",
+      "sizes": "96x96",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/img/citiplumb.jpg",
+      "sizes": "128x128",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/img/citiplumb.jpg",
+      "sizes": "144x144",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/img/citiplumb.jpg",
+      "sizes": "152x152",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/img/citiplumb.jpg",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/img/citiplumb.jpg",
+      "sizes": "384x384",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/img/citiplumb.jpg",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+
+
+
+  "related_applications": [
+    {
+      "platform": "webapp",
+      "url": "https://bc.citiplumb.com/manifest.json"
+    }
+  ],
+
+  "display_override": ["standalone", "window-controls-overlay"],
+
+  "edge_side_panel": {
+    "preferred_width": 400
+  },
+
+  "protocol_handlers": [
+    {
+      "protocol": "web+itportal",
+      "url": "/handle-protocol?type=%s"
+    }
+  ],
+
+  "handle_links": "preferred",
+  "prefer_related_applications": false,
+
+  "share_target": {
+    "action": "/share",
+    "method": "POST",
+    "enctype": "multipart/form-data",
+    "params": {
+      "title": "name",
+      "text": "description",
+      "url": "link",
+      "files": [
+        {
+          "name": "screenshots",
+          "accept": ["image/jpeg", "image/png"]
+        }
+      ]
+    }
+  }
+}

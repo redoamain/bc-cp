@@ -206,7 +206,7 @@ export default function Navbar({
         <div className="flex h-16 items-center justify-between">
           {/* Logo dan Brand */}
           <div className="flex items-center">
-            <Link href="/home" className="flex items-center gap-2.5">
+            <Link href="/dashboard" className="flex items-center gap-2.5">
               <div className="h-9 w-9 bg-linear-to-br from-primary to-primary/80 rounded-xl flex items-center justify-center shadow-md">
                 <Package className="h-5 w-5 text-white" />
               </div>
