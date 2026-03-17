@@ -23,6 +23,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { getScrap } from "@/lib/services/mutasiService";
+import { useUser } from "../../../contexts/UserContext"; 
 
 const formatDate = (date: Date | string) => {
   return format(new Date(date), "dd MMM yyyy", { locale: id });
@@ -43,6 +44,8 @@ const sendTelegramNotification = async (exportData: {
   totalSaldoAkhir: number;
   totalSelisih: number;
   userAgent?: string;
+  userName?: string;
+  userBagian?: string;
 }) => {
   try {
     const selisihStatus =
@@ -69,6 +72,7 @@ const sendTelegramNotification = async (exportData: {
           `📉 |Saldo Akhir: ${exportData.totalSaldoAkhir.toLocaleString("id-ID")}\n\n` +
           `⚠️ |Selisih Stok: ${exportData.totalSelisih.toLocaleString("id-ID")} (${selisihStatus})\n` +
           `🕐 |Waktu Export: ${format(new Date(), "dd MMM yyyy HH:mm:ss", { locale: id })}\n` +
+          `👤 |Diekspor oleh: ${exportData.userName || "Unknown"} ${exportData.userBagian ? `(${exportData.userBagian})` : ""}\n` +
           `💻 |User Agent: ${exportData.userAgent || "Unknown"}`,
         parseMode: "Markdown",
       }),
@@ -94,13 +98,28 @@ export default function ScrapPage() {
   const [error, setError] = useState<string | null>(null);
   const [tgl1, setTgl1] = useState(defaultTgl1);
   const [tgl2, setTgl2] = useState(defaultTgl2);
+  // Menggunakan UserContext
+  const { user, isLoading: userLoading } = useUser();
 
+  // Mendapatkan informasi user dengan berbagai kemungkinan field name
+  const getUserInfo = useCallback(() => {
+    if (!user) return { name: "Unknown", bagian: "Unknown" };
+
+    // Coba berbagai kemungkinan field name
+    const name =
+      user.Nama || user.name || user.UserName || user.username || "Unknown";
+    const bagian = user.Bagian || user.role || user.jabatan || "Unknown";
+
+    return { name, bagian };
+  }, [user]);
+
+  const userInfo = getUserInfo();
   const fetchData = useCallback(async (tglAwal: string, tglAkhir: string) => {
     setLoading(true);
     setError(null);
 
     try {
-       const response = await getScrap(tglAwal, tglAkhir);
+      const response = await getScrap(tglAwal, tglAkhir);
       if (response.success && response.data) {
         setData(response.data);
         setTgl1(tglAwal);
@@ -128,7 +147,7 @@ export default function ScrapPage() {
   // app/mutasi/bahan-baku/page.tsx
   // Perbaiki fungsi exportToExcel
 
-  const exportToExcel = async() => {
+  const exportToExcel = async () => {
     try {
       if (data.length === 0) {
         alert("Tidak ada data untuk diexport");
@@ -309,6 +328,8 @@ export default function ScrapPage() {
         totalSaldoAkhir,
         totalSelisih,
         userAgent: navigator.userAgent,
+        userName: userInfo.name,
+        userBagian: userInfo.bagian,
       });
     } catch (error) {
       console.error("Export error:", error);
@@ -332,11 +353,16 @@ export default function ScrapPage() {
     (sum, item) => sum + (item.SaldoAkhir || 0),
     0,
   );
-  const totalSelisih = data.reduce(
-    (sum, item) => sum + (item.selisih || 0),
-    0,
-  );
-
+  const totalSelisih = data.reduce((sum, item) => sum + (item.selisih || 0), 0);
+if (userLoading) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        </div>
+      </div>
+    );
+  }
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="flex flex-col gap-6">
@@ -390,9 +416,7 @@ export default function ScrapPage() {
             </CardHeader>
             <CardContent>
               <p className="text-2xl font-bold">{data.length}</p>
-              <p className="text-xs text-muted-foreground mt-1">
-                Jumlah Scrap
-              </p>
+              <p className="text-xs text-muted-foreground mt-1">Jumlah Scrap</p>
             </CardContent>
           </Card>
 

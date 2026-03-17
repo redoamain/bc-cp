@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-
+// app/retur-pembelian/page.tsx
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
@@ -20,13 +20,14 @@ import {
   FileSpreadsheet,
   Package,
   DollarSign,
-  Bug,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { useUser } from "../../contexts/UserContext"
 
 const formatDate = (date: Date | string) => {
   return format(new Date(date), "dd MMM yyyy", { locale: id });
 };
+
 const sendTelegramNotification = async (exportData: {
   fileName: string;
   periode: string;
@@ -35,6 +36,8 @@ const sendTelegramNotification = async (exportData: {
   totalIDR: number;
   totalJumlah: number;
   userAgent?: string;
+  userName?: string;
+  userBagian?: string;
 }) => {
   try {
     const response = await fetch("/api/notif", {
@@ -52,7 +55,8 @@ const sendTelegramNotification = async (exportData: {
           `💵 |Total USD: ${new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(exportData.totalUSD)}\n` +
           `💰 |Total IDR: ${new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR" }).format(exportData.totalIDR)}\n` +
           `🕐 |Waktu Export: ${format(new Date(), "dd MMM yyyy HH:mm:ss", { locale: id })}\n` +
-          `💻 *User Agent:* ${exportData.userAgent || "Unknown"}`,
+          `👤 |Diekspor oleh: ${exportData.userName || "Unknown"} ${exportData.userBagian ? `(${exportData.userBagian})` : ""}\n` +
+          `💻 |User Agent: ${exportData.userAgent || "Unknown"}`,
         parseMode: "Markdown",
       }),
     });
@@ -64,11 +68,15 @@ const sendTelegramNotification = async (exportData: {
     console.error("Error sending Telegram notification:", error);
   }
 };
-export default function PengeluaranPage() {
+
+export default function ReturPembelianPage() {
   // Initialize dengan tanggal default
   const today = new Date();
   const defaultTgl2 = format(today, "yyyy-MM-dd");
-  const defaultTgl1 = format(new Date(today.getFullYear(), today.getMonth(), 1), "yyyy-MM-dd");
+  const defaultTgl1 = format(
+    new Date(today.getFullYear(), today.getMonth(), 1),
+    "yyyy-MM-dd",
+  );
 
   const [data, setData] = useState<ReturPembelianType[]>([]);
   const [filteredData, setFilteredData] = useState<ReturPembelianType[]>([]);
@@ -78,7 +86,22 @@ export default function PengeluaranPage() {
   const [tgl2, setTgl2] = useState(defaultTgl2);
   const [jenisFilter, setJenisFilter] = useState("");
 
-  const [showDebug, setShowDebug] = useState(false);
+  // Menggunakan UserContext
+  const { user, isLoading: userLoading } = useUser();
+
+  // Mendapatkan informasi user dengan berbagai kemungkinan field name
+  const getUserInfo = useCallback(() => {
+    if (!user) return { name: "Unknown", bagian: "Unknown" };
+
+    // Coba berbagai kemungkinan field name
+    const name =
+      user.Nama || user.name || user.UserName || user.username || "Unknown";
+    const bagian = user.Bagian || user.role || user.jabatan || "Unknown";
+
+    return { name, bagian };
+  }, [user]);
+
+  const userInfo = getUserInfo();
 
   const fetchData = useCallback(async (tglAwal: string, tglAkhir: string) => {
     setLoading(true);
@@ -129,22 +152,14 @@ export default function PengeluaranPage() {
     }
   }, [jenisFilter, data]);
 
-  
-
   const handleFilter = (tglAwal: string, tglAkhir: string) => {
     fetchData(tglAwal, tglAkhir);
   };
 
-  // const totalNilai = filteredData.reduce(
-  //   (sum, item) => sum + (item.NilaiBarang || 0),
-  //   0,
-  // );
   const totalJumlah = filteredData.reduce(
     (sum, item) => sum + (item.Jumlah || 0),
     0,
   );
-  // app/pengeluaran/page.tsx
-  // Fungsi export dengan header laporan
 
   const exportToExcel = async () => {
     try {
@@ -165,13 +180,15 @@ export default function PengeluaranPage() {
       const reportTitle = "LAPORAN RETUR PEMBELIAN";
       const periode = `Periode: ${formatDate(tgl1)} - ${formatDate(tgl2)}`;
       const tanggalCetak = `Tanggal Cetak: ${format(new Date(), "dd MMMM yyyy HH:mm")}`;
+    //  const dieksporOleh = `Diekspor oleh: ${userInfo.name} (${userInfo.bagian})`;
       const totalData = `Total Data: ${filteredData.length} transaksi`;
 
-      // Header laporan (4 baris pertama)
+      // Header laporan (5 baris pertama)
       const headerRows = [
         [reportTitle],
         [periode],
         [tanggalCetak],
+        // [dieksporOleh],
         [totalData],
         [], // Baris kosong
       ];
@@ -191,6 +208,7 @@ export default function PengeluaranPage() {
         "Satuan",
         "Curr",
         "Nilai Barang",
+        "No. Container / Plate Number",
       ];
 
       // Data rows
@@ -212,47 +230,44 @@ export default function PengeluaranPage() {
         item.Satuan || "-",
         item.Curr || "USD",
         item.NilaiBarang || 0,
+        item.Nopol || "-",
       ]);
 
       // Gabungkan semua data
-      const wsData = [
-        ...headerRows,
-        columnHeaders,
-        ...dataRows,
-        [], // Baris kosong
-      ];
+      const wsData = [...headerRows, columnHeaders, ...dataRows, []];
 
       // Buat worksheet dari data
       // eslint-disable-next-line prefer-const
       ws = XLSX.utils.aoa_to_sheet(wsData);
 
-      // Merge cells untuk header laporan (baris 1-4, kolom A-O)
+      // Merge cells untuk header laporan (baris 1-5, kolom A-N)
       if (!ws["!merges"]) ws["!merges"] = [];
 
       // Merge untuk judul laporan (baris 1)
-      ws["!merges"].push({ s: { r: 0, c: 0 }, e: { r: 0, c: 14 } });
+      ws["!merges"].push({ s: { r: 0, c: 0 }, e: { r: 0, c: 13 } });
       // Merge untuk periode (baris 2)
-      ws["!merges"].push({ s: { r: 1, c: 0 }, e: { r: 1, c: 14 } });
+      ws["!merges"].push({ s: { r: 1, c: 0 }, e: { r: 1, c: 13 } });
       // Merge untuk tanggal cetak (baris 3)
-      ws["!merges"].push({ s: { r: 2, c: 0 }, e: { r: 2, c: 14 } });
-      // Merge untuk total data (baris 4)
-      ws["!merges"].push({ s: { r: 3, c: 0 }, e: { r: 3, c: 14 } });
+      ws["!merges"].push({ s: { r: 2, c: 0 }, e: { r: 2, c: 13 } });
+      // Merge untuk diekspor oleh (baris 4)
+      ws["!merges"].push({ s: { r: 3, c: 0 }, e: { r: 3, c: 13 } });
+      // Merge untuk total data (baris 5)
+      ws["!merges"].push({ s: { r: 4, c: 0 }, e: { r: 4, c: 13 } });
       // Merge untuk akhir laporan
       ws["!merges"].push({
         s: { r: wsData.length - 1, c: 0 },
-        e: { r: wsData.length - 1, c: 14 },
+        e: { r: wsData.length - 1, c: 13 },
       });
 
-      // Style untuk header (akan diterapkan di Excel)
       // Atur lebar kolom
       const wscols = [
         { wch: 5 }, // No.
         { wch: 15 }, // Jenis Dokumen
         { wch: 15 }, // No. Dokumen
         { wch: 12 }, // Tgl Dokumen
-        { wch: 10 }, // No. BPB
-        { wch: 12 }, // Tgl BPB
-        { wch: 35 }, // Pemasok/Pengirim
+        { wch: 15 }, // No. Surat Jalan
+        { wch: 12 }, // Tgl Surat Jalan
+        { wch: 35 }, // Penerima
         { wch: 15 }, // Kode Barang
         { wch: 45 }, // Nama Barang
         { wch: 12 }, // Jumlah
@@ -260,28 +275,29 @@ export default function PengeluaranPage() {
         { wch: 8 }, // Curr
         { wch: 18 }, // Nilai Barang
         { wch: 15 }, // No. Container
-        { wch: 15 }, // No. Invoice
       ];
       ws["!cols"] = wscols;
 
-      // Set row heights (opsional)
+      // Set row heights
       ws["!rows"] = [
-        { hpt: 30 }, // Baris 1 (judul) - tinggi 30 points
+        { hpt: 30 }, // Baris 1 (judul)
         { hpt: 20 }, // Baris 2 (periode)
         { hpt: 20 }, // Baris 3 (tanggal cetak)
-        { hpt: 20 }, // Baris 4 (total data)
-        { hpt: 5 }, // Baris 5 (baris kosong)
-        { hpt: 25 }, // Baris 6 (header kolom)
+        // { hpt: 20 }, // Baris 4 (diekspor oleh)
+        { hpt: 20 }, // Baris 5 (total data)
+        { hpt: 5 }, // Baris 6 (baris kosong)
+        { hpt: 25 }, // Baris 7 (header kolom)
       ];
 
       // Tambahkan worksheet ke workbook
-      XLSX.utils.book_append_sheet(wb, ws, "Pengeluaran Retur");
+      XLSX.utils.book_append_sheet(wb, ws, "Retur Pembelian");
 
       // Download file
       const fileName = `LAPORAN_RETUR_PEMBELIAN_${tgl1}_${tgl2}.xlsx`;
       XLSX.writeFile(wb, fileName);
 
       console.log("Export successful:", fileName);
+
       // Kirim notifikasi ke Telegram
       await sendTelegramNotification({
         fileName,
@@ -291,6 +307,8 @@ export default function PengeluaranPage() {
         totalIDR,
         totalJumlah,
         userAgent: navigator.userAgent,
+        userName: userInfo.name,
+        userBagian: userInfo.bagian,
       });
     } catch (error) {
       console.error("Export error:", error);
@@ -300,33 +318,46 @@ export default function PengeluaranPage() {
       );
     }
   };
-     const totalUSD = filteredData
-       .filter((item) => item.Curr === "USD")
-       .reduce((sum, item) => sum + (item.NilaiBarang || 0), 0);
 
-     const totalIDR = filteredData
-       .filter((item) => item.Curr === "IDR")
-       .reduce((sum, item) => sum + (item.NilaiBarang || 0), 0);
+  const totalUSD = filteredData
+    .filter((item) => item.Curr === "USD")
+    .reduce((sum, item) => sum + (item.NilaiBarang || 0), 0);
 
-     const countUSD = filteredData.filter((item) => item.Curr === "USD").length;
-     const countIDR = filteredData.filter((item) => item.Curr === "IDR").length;
+  const totalIDR = filteredData
+    .filter((item) => item.Curr === "IDR")
+    .reduce((sum, item) => sum + (item.NilaiBarang || 0), 0);
+
+  const countUSD = filteredData.filter((item) => item.Curr === "USD").length;
+  const countIDR = filteredData.filter((item) => item.Curr === "IDR").length;
+
+  // Loading state untuk user
+  if (userLoading) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="flex flex-col gap-6">
-        {/* Header with Debug Button */}
+        {/* Header dengan informasi user */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
-            <h1 className="text-3xl font-bold">Data Pengeluaran Pembelian</h1>
+            <h1 className="text-3xl font-bold">Data Retur Pembelian</h1>
             <p className="text-muted-foreground">
-              Laporan pengeluaran Retur Pembelian barang periode {formatDate(tgl1)} -{" "}
+              Laporan retur pembelian barang periode {formatDate(tgl1)} -{" "}
               {formatDate(tgl2)}
             </p>
             <p className="text-xs text-muted-foreground mt-1">
               Total data: {data.length} item
             </p>
+         
           </div>
           <div className="flex gap-2">
-          
             <Button
               variant="outline"
               onClick={() => fetchData(tgl1, tgl2)}
@@ -386,7 +417,7 @@ export default function PengeluaranPage() {
                 {totalJumlah.toLocaleString()}
               </p>
               <p className="text-xs text-muted-foreground mt-1">
-                Total jumlah barang masuk
+                Total jumlah barang diretur
               </p>
             </CardContent>
           </Card>
@@ -396,7 +427,7 @@ export default function PengeluaranPage() {
             <Card>
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="text-sm font-medium text-muted-foreground">
-                  Total Transaksi dengan CUR USD
+                  Total Nilai USD
                 </CardTitle>
                 <DollarSign className="h-4 w-4 text-blue-500" />
               </CardHeader>
@@ -426,11 +457,11 @@ export default function PengeluaranPage() {
             <Card>
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="text-sm font-medium text-muted-foreground">
-                  Total Transaksi dengan CUR IDR
+                  Total Nilai IDR
                 </CardTitle>
                 <DollarSign className="h-4 w-4 text-green-500" />
               </CardHeader>
-              <CardContent className="">
+              <CardContent>
                 <p className="text-2xl font-bold text-green-600">
                   {new Intl.NumberFormat("id-ID", {
                     style: "currency",
@@ -472,7 +503,7 @@ export default function PengeluaranPage() {
               <DataTable
                 columns={columns}
                 data={filteredData}
-                searchKey="Namabarang"
+                searchKey="NamaBarang"
                 searchPlaceholder="Cari nama barang..."
                 onJenisDokumenFilter={setJenisFilter}
               />
@@ -483,7 +514,7 @@ export default function PengeluaranPage() {
         {/* Info */}
         {filteredData.length > 0 && !loading && (
           <div className="text-sm text-muted-foreground text-right">
-            Menampilkan {filteredData.length} data pengeluaran
+            Menampilkan {filteredData.length} data retur pembelian
             {jenisFilter && ` (filter: ${jenisFilter})`}
           </div>
         )}

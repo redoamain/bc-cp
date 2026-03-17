@@ -21,7 +21,7 @@ import {
   TrendingDown,
 } from "lucide-react";
 import { getWIP } from "@/lib/services/mutasiService";
-
+import { useUser } from "../../../contexts/UserContext"; // Import useUser
 const formatDate = (date: Date | string) => {
   return format(new Date(date), "dd MMM yyyy", { locale: id });
 };
@@ -35,11 +35,11 @@ const sendTelegramNotification = async (exportData: {
   fileName: string;
   periode: string;
   totalData: number;
-
-
   totalSaldoAkhir: number;
 
   userAgent?: string;
+  userName?: string;
+  userBagian?: string;
 }) => {
   try {
    
@@ -56,6 +56,7 @@ const sendTelegramNotification = async (exportData: {
           `📊 |Total Item: ${exportData.totalData} WIP\n` +
           `📉 |Saldo Akhir: ${exportData.totalSaldoAkhir.toLocaleString("id-ID")}\n` +
           `🕐 |Waktu Export: ${format(new Date(), "dd MMM yyyy HH:mm:ss", { locale: id })}\n` +
+          `👤 |Diekspor oleh: ${exportData.userName || "Unknown"} ${exportData.userBagian ? `(${exportData.userBagian})` : ""}\n` +
           `💻 |User Agent: ${exportData.userAgent || "Unknown"}`,
         parseMode: "Markdown",
       }),
@@ -81,6 +82,23 @@ export default function WipPage() {
   const [error, setError] = useState<string | null>(null);
   const [tgl1, setTgl1] = useState(defaultTgl1);
   const [tgl2, setTgl2] = useState(defaultTgl2);
+
+  // Menggunakan UserContext
+  const { user, isLoading: userLoading } = useUser();
+
+  // Mendapatkan informasi user dengan berbagai kemungkinan field name
+  const getUserInfo = useCallback(() => {
+    if (!user) return { name: "Unknown", bagian: "Unknown" };
+
+    // Coba berbagai kemungkinan field name
+    const name =
+      user.Nama || user.name || user.UserName || user.username || "Unknown";
+    const bagian = user.Bagian || user.role || user.jabatan || "Unknown";
+
+    return { name, bagian };
+  }, [user]);
+
+  const userInfo = getUserInfo();
 
   const fetchData = useCallback(async (tglAwal: string, tglAkhir: string) => {
     setLoading(true);
@@ -252,10 +270,10 @@ export default function WipPage() {
                     fileName,
                     periode: `${format(new Date(tgl1), "dd MMM yyyy")} - ${format(new Date(tgl2), "dd MMM yyyy")}`,
                     totalData: data.length,
-                
                     totalSaldoAkhir,
-                   
                     userAgent: navigator.userAgent,
+                    userName: userInfo.name,
+                    userBagian: userInfo.bagian,
                   });
     } catch (error) {
       console.error("Export error:", error);
@@ -267,6 +285,15 @@ export default function WipPage() {
     (sum, item) => sum + (item.SaldoAkhir || 0),
     0,
   );
+  if (userLoading) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto px-4 py-8">

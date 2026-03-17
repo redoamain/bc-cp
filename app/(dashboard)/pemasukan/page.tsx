@@ -23,10 +23,12 @@ import {
   Bug,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { useUser } from "../../contexts/UserContext";
 
 const formatDate = (date: Date | string) => {
   return format(new Date(date), "dd MMM yyyy", { locale: id });
 };
+
 const sendTelegramNotification = async (exportData: {
   fileName: string;
   periode: string;
@@ -35,6 +37,8 @@ const sendTelegramNotification = async (exportData: {
   totalIDR: number;
   totalJumlah: number;
   userAgent?: string;
+  userName?: string;
+  userBagian?: string;
 }) => {
   try {
     const response = await fetch("/api/notif", {
@@ -52,7 +56,8 @@ const sendTelegramNotification = async (exportData: {
           `💵 |Total USD: ${new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(exportData.totalUSD)}\n` +
           `💰 |Total IDR: ${new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR" }).format(exportData.totalIDR)}\n` +
           `🕐 |Waktu Export: ${format(new Date(), "dd MMM yyyy HH:mm:ss", { locale: id })}\n` +
-          `💻 *User Agent:* ${exportData.userAgent || "Unknown"}`,
+          `👤 |Diekspor oleh: ${exportData.userName || "Unknown"} ${exportData.userBagian ? `(${exportData.userBagian})` : ""}\n` +
+          `💻 |User Agent:* ${exportData.userAgent || "Unknown"}`,
         parseMode: "Markdown",
       }),
     });
@@ -64,11 +69,15 @@ const sendTelegramNotification = async (exportData: {
     console.error("Error sending Telegram notification:", error);
   }
 };
+
 export default function PemasukanPage() {
   // Initialize dengan tanggal default
   const today = new Date();
   const defaultTgl2 = format(today, "yyyy-MM-dd");
-  const defaultTgl1 = format(new Date(today.getFullYear(), today.getMonth(), 1), "yyyy-MM-dd");
+  const defaultTgl1 = format(
+    new Date(today.getFullYear(), today.getMonth(), 1),
+    "yyyy-MM-dd",
+  );
 
   const [data, setData] = useState<PemasukanType[]>([]);
   const [filteredData, setFilteredData] = useState<PemasukanType[]>([]);
@@ -78,7 +87,22 @@ export default function PemasukanPage() {
   const [tgl2, setTgl2] = useState(defaultTgl2);
   const [jenisFilter, setJenisFilter] = useState("");
 
+  // Menggunakan UserContext
+  const { user, isLoading: userLoading } = useUser();
 
+  // Mendapatkan informasi user dengan berbagai kemungkinan field name
+  const getUserInfo = useCallback(() => {
+    if (!user) return { name: "Unknown", bagian: "Unknown" };
+
+    // Coba berbagai kemungkinan field name
+    const name =
+      user.Nama || user.name || user.UserName || user.username || "Unknown";
+    const bagian = user.Bagian || user.role || user.jabatan || "Unknown";
+
+    return { name, bagian };
+  }, [user]);
+
+  const userInfo = getUserInfo();
 
   const fetchData = useCallback(async (tglAwal: string, tglAkhir: string) => {
     setLoading(true);
@@ -129,8 +153,6 @@ export default function PemasukanPage() {
     }
   }, [jenisFilter, data]);
 
- 
-
   const handleFilter = (tglAwal: string, tglAkhir: string) => {
     fetchData(tglAwal, tglAkhir);
   };
@@ -143,10 +165,9 @@ export default function PemasukanPage() {
     (sum, item) => sum + (item.Jumlah || 0),
     0,
   );
-  // app/pemasukan/page.tsx
-  // Fungsi export dengan header laporan
 
-  const exportToExcel =  async () => {
+  // Fungsi export dengan header laporan
+  const exportToExcel = async () => {
     try {
       console.log("Exporting data...", filteredData.length);
 
@@ -165,9 +186,10 @@ export default function PemasukanPage() {
       const reportTitle = "LAPORAN PEMASUKAN BARANG";
       const periode = `Periode: ${formatDate(tgl1)} - ${formatDate(tgl2)}`;
       const tanggalCetak = `Tanggal Cetak: ${format(new Date(), "dd MMMM yyyy HH:mm")}`;
+      // const dieksporOleh = `Diekspor oleh: ${userInfo.name} (${userInfo.bagian})`; // Menggunakan info dari context
       const totalData = `Total Data: ${filteredData.length} transaksi`;
 
-      // Header laporan (4 baris pertama)
+      // Header laporan (5 baris pertama)
       const headerRows = [
         [reportTitle],
         [periode],
@@ -191,7 +213,7 @@ export default function PemasukanPage() {
         "Satuan",
         "Curr",
         "Nilai Barang",
-        "No. Container",
+        "No. Container / Plate Number",
         // "No. Invoice",
       ];
 
@@ -212,7 +234,7 @@ export default function PemasukanPage() {
         item.Satuan || "-",
         item.CURR || "USD",
         item.NilaiBarang || 0,
-        // item.Nopol || "-",
+        item.Nopol || "-",
         // item.NoInvoice || "-",
       ]);
 
@@ -228,7 +250,7 @@ export default function PemasukanPage() {
       // eslint-disable-next-line prefer-const
       ws = XLSX.utils.aoa_to_sheet(wsData);
 
-      // Merge cells untuk header laporan (baris 1-4, kolom A-O)
+      // Merge cells untuk header laporan (baris 1-5, kolom A-O)
       if (!ws["!merges"]) ws["!merges"] = [];
 
       // Merge untuk judul laporan (baris 1)
@@ -237,8 +259,10 @@ export default function PemasukanPage() {
       ws["!merges"].push({ s: { r: 1, c: 0 }, e: { r: 1, c: 14 } });
       // Merge untuk tanggal cetak (baris 3)
       ws["!merges"].push({ s: { r: 2, c: 0 }, e: { r: 2, c: 14 } });
-      // Merge untuk total data (baris 4)
+      // Merge untuk diekspor oleh (baris 4)
       ws["!merges"].push({ s: { r: 3, c: 0 }, e: { r: 3, c: 14 } });
+      // Merge untuk total data (baris 5)
+      ws["!merges"].push({ s: { r: 4, c: 0 }, e: { r: 4, c: 14 } });
       // Merge untuk akhir laporan
       ws["!merges"].push({
         s: { r: wsData.length - 1, c: 0 },
@@ -271,9 +295,9 @@ export default function PemasukanPage() {
         { hpt: 30 }, // Baris 1 (judul) - tinggi 30 points
         { hpt: 20 }, // Baris 2 (periode)
         { hpt: 20 }, // Baris 3 (tanggal cetak)
-        { hpt: 20 }, // Baris 4 (total data)
-        { hpt: 5 }, // Baris 5 (baris kosong)
-        { hpt: 25 }, // Baris 6 (header kolom)
+        { hpt: 20 }, // Baris 5 (total data)
+        { hpt: 5 }, // Baris 6 (baris kosong)
+        { hpt: 25 }, // Baris 7 (header kolom)
       ];
 
       // Tambahkan worksheet ke workbook
@@ -284,7 +308,8 @@ export default function PemasukanPage() {
       XLSX.writeFile(wb, fileName);
 
       console.log("Export successful:", fileName);
-      // Kirim notifikasi ke Telegram
+
+      // Kirim notifikasi ke Telegram dengan informasi user dari context
       await sendTelegramNotification({
         fileName,
         periode: `${formatDate(tgl1)} - ${formatDate(tgl2)}`,
@@ -293,6 +318,8 @@ export default function PemasukanPage() {
         totalIDR,
         totalJumlah,
         userAgent: navigator.userAgent,
+        userName: userInfo.name,
+        userBagian: userInfo.bagian,
       });
     } catch (error) {
       console.error("Export error:", error);
@@ -302,6 +329,7 @@ export default function PemasukanPage() {
       );
     }
   };
+
   const totalUSD = filteredData
     .filter((item) => item.CURR === "USD")
     .reduce((sum, item) => sum + (item.NilaiBarang || 0), 0);
@@ -312,10 +340,22 @@ export default function PemasukanPage() {
 
   const countUSD = filteredData.filter((item) => item.CURR === "USD").length;
   const countIDR = filteredData.filter((item) => item.CURR === "IDR").length;
+
+  // Loading state untuk user
+  if (userLoading) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="flex flex-col gap-6">
-        {/* Header with Debug Button */}
+        {/* Header dengan informasi user */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
             <h1 className="text-3xl font-bold">Data Pemasukan</h1>
@@ -326,9 +366,9 @@ export default function PemasukanPage() {
             <p className="text-xs text-muted-foreground mt-1">
               Total data: {data.length} item
             </p>
+           
           </div>
           <div className="flex gap-2">
-     
             <Button
               variant="outline"
               onClick={() => fetchData(tgl1, tgl2)}
@@ -359,7 +399,7 @@ export default function PemasukanPage() {
           defaultTgl2={tgl2}
         />
 
-        {/* Summary Cards */}
+        {/* Summary Cards (tetap sama) */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -432,7 +472,7 @@ export default function PemasukanPage() {
                 </CardTitle>
                 <DollarSign className="h-4 w-4 text-green-500" />
               </CardHeader>
-              <CardContent className="">
+              <CardContent>
                 <p className="text-2xl font-bold text-green-600">
                   {new Intl.NumberFormat("id-ID", {
                     style: "currency",

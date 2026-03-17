@@ -23,6 +23,7 @@ import {
   PlusCircle,
   AlertCircle,
 } from "lucide-react";
+import { useUser } from "../../../contexts/UserContext";
 
 const formatDate = (date: Date | string) => {
   return format(new Date(date), "dd MMM yyyy", { locale: id });
@@ -44,6 +45,8 @@ const sendTelegramNotification = async (exportData: {
   totalSaldoAkhir: number;
   totalSelisih: number;
   userAgent?: string;
+  userName?: string;
+  userBagian?: string;
 }) => {
   try {
     const selisihStatus =
@@ -70,6 +73,7 @@ const sendTelegramNotification = async (exportData: {
           `📉 |Saldo Akhir: ${exportData.totalSaldoAkhir.toLocaleString("id-ID")}\n\n` +
           `⚠️ |Selisih Stok: ${exportData.totalSelisih.toLocaleString("id-ID")} (${selisihStatus})\n` +
           `🕐 |Waktu Export: ${format(new Date(), "dd MMM yyyy HH:mm:ss", { locale: id })}\n` +
+          `👤 |Diekspor oleh: ${exportData.userName || "Unknown"} ${exportData.userBagian ? `(${exportData.userBagian})` : ""}\n` +
           `💻 |User Agent: ${exportData.userAgent || "Unknown"}`,
         parseMode: "Markdown",
       }),
@@ -96,6 +100,23 @@ export default function BahanBakuPage() {
   const [error, setError] = useState<string | null>(null);
   const [tgl1, setTgl1] = useState(defaultTgl1);
   const [tgl2, setTgl2] = useState(defaultTgl2);
+
+  // Menggunakan UserContext
+  const { user, isLoading: userLoading } = useUser();
+
+  // Mendapatkan informasi user dengan berbagai kemungkinan field name
+  const getUserInfo = useCallback(() => {
+    if (!user) return { name: "Unknown", bagian: "Unknown" };
+
+    // Coba berbagai kemungkinan field name
+    const name =
+      user.Nama || user.name || user.UserName || user.username || "Unknown";
+    const bagian = user.Bagian || user.role || user.jabatan || "Unknown";
+
+    return { name, bagian };
+  }, [user]);
+
+  const userInfo = getUserInfo();
 
   const fetchData = useCallback(async (tglAwal: string, tglAkhir: string) => {
     setLoading(true);
@@ -143,6 +164,7 @@ export default function BahanBakuPage() {
       const reportTitle = "LAPORAN MUTASI BAHAN BAKU";
       const periode = `Periode: ${format(new Date(tgl1), "dd MMMM yyyy")} - ${format(new Date(tgl2), "dd MMMM yyyy")}`;
       const tanggalCetak = `Tanggal Cetak: ${format(new Date(), "dd MMMM yyyy HH:mm:ss")}`;
+      
       const totalData = `Total Data: ${data.length} item`;
 
       // Header kolom
@@ -252,8 +274,10 @@ export default function BahanBakuPage() {
       ws["!merges"].push({ s: { r: 1, c: 0 }, e: { r: 1, c: 11 } });
       // Merge untuk tanggal cetak (baris 3)
       ws["!merges"].push({ s: { r: 2, c: 0 }, e: { r: 2, c: 11 } });
-      // Merge untuk total data (baris 4)
+      // Merge untuk diekspor oleh (baris 4)
       ws["!merges"].push({ s: { r: 3, c: 0 }, e: { r: 3, c: 11 } });
+      // Merge untuk total data (baris 5)
+      ws["!merges"].push({ s: { r: 4, c: 0 }, e: { r: 4, c: 11 } });
       // Merge untuk baris TOTAL (baris terakhir - 2)
       ws["!merges"].push({
         s: { r: wsData.length - 2, c: 0 },
@@ -276,7 +300,7 @@ export default function BahanBakuPage() {
         { wch: 12 }, // Pengeluaran
         { wch: 12 }, // Penyesuaian
         { wch: 15 }, // Saldo Akhir
-        { wch: 12 }, // Stok Opname
+        { wch: 15 }, // Hasil Pencacahan
         { wch: 12 }, // Selisih
         { wch: 30 }, // Keterangan
       ];
@@ -287,16 +311,16 @@ export default function BahanBakuPage() {
         { hpt: 30 }, // Baris 1 (judul)
         { hpt: 20 }, // Baris 2 (periode)
         { hpt: 20 }, // Baris 3 (tanggal cetak)
-        { hpt: 20 }, // Baris 4 (total data)
-        { hpt: 5 }, // Baris 5 (baris kosong)
-        { hpt: 25 }, // Baris 6 (header kolom)
+        { hpt: 20 }, // Baris 5 (total data)
+        { hpt: 5 }, // Baris 6 (baris kosong)
+        { hpt: 25 }, // Baris 7 (header kolom)
       ];
 
       // Tambahkan worksheet ke workbook
       XLSX.utils.book_append_sheet(wb, ws, "Bahan Baku");
 
       // Download file
-      const fileName = `laporan_bahan_baku_${tgl1}_${tgl2}.xlsx`;
+      const fileName = `LAPORAN_BAHAN_BAKU_${tgl1}_${tgl2}.xlsx`;
       XLSX.writeFile(wb, fileName);
 
       // Kirim notifikasi ke Telegram
@@ -310,6 +334,8 @@ export default function BahanBakuPage() {
         totalSaldoAkhir,
         totalSelisih,
         userAgent: navigator.userAgent,
+        userName: userInfo.name,
+        userBagian: userInfo.bagian,
       });
     } catch (error) {
       console.error("Export error:", error);
@@ -336,10 +362,21 @@ export default function BahanBakuPage() {
   );
   const totalSelisih = data.reduce((sum, item) => sum + (item.selisih || 0), 0);
 
+  // Loading state untuk user
+  if (userLoading) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="flex flex-col gap-6">
-        {/* Header */}
+        {/* Header dengan informasi user */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
             <h1 className="text-3xl font-bold">Mutasi Bahan Baku</h1>
@@ -347,6 +384,7 @@ export default function BahanBakuPage() {
               Laporan mutasi bahan baku periode {formatDate(tgl1)} -{" "}
               {formatDate(tgl2)}
             </p>
+       
           </div>
           <div className="flex gap-2">
             <Button

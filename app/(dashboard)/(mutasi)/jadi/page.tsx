@@ -23,6 +23,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { getBarangJadi } from "@/lib/services/mutasiService";
+import { useUser } from "../../../contexts/UserContext"; // Import useUser
 
 const formatDate = (date: Date | string) => {
   return format(new Date(date), "dd MMM yyyy", { locale: id });
@@ -44,6 +45,8 @@ const sendTelegramNotification = async (exportData: {
   totalSaldoAkhir: number;
   totalSelisih: number;
   userAgent?: string;
+  userName?: string;
+  userBagian?: string;
 }) => {
   try {
     const selisihStatus =
@@ -61,16 +64,17 @@ const sendTelegramNotification = async (exportData: {
       body: JSON.stringify({
         message:
           `📦 |LAPORAN MUTASI BARANG JADI DIEXPORT\n\n` +
-          `📁 |File: ${exportData.fileName}\n` +
-          `📅 |Periode: ${exportData.periode}\n` +
-          `📊 |Total Item: ${exportData.totalData} barang jadi\n\n` +
-          `📈 |Saldo Awal: ${exportData.totalSaldoAwal.toLocaleString("id-ID")}\n` +
-          `➕ |Pemasukan: ${exportData.totalPemasukan.toLocaleString("id-ID")}\n` +
-          `➖ |Pengeluaran: ${exportData.totalPengeluaran.toLocaleString("id-ID")}\n` +
-          `📉 |Saldo Akhir: ${exportData.totalSaldoAkhir.toLocaleString("id-ID")}\n\n` +
-          `⚠️ |Selisih Stok: ${exportData.totalSelisih.toLocaleString("id-ID")} (${selisihStatus})\n` +
-          `🕐 |Waktu Export: ${format(new Date(), "dd MMM yyyy HH:mm:ss", { locale: id })}\n` +
-          `💻 |User Agent: ${exportData.userAgent || "Unknown"}`,
+          `📁 |File:* ${exportData.fileName}\n` +
+          `📅 |Periode:* ${exportData.periode}\n` +
+          `📊 |Total Item:* ${exportData.totalData} barang jadi\n\n` +
+          `📈 |Saldo Awal:* ${exportData.totalSaldoAwal.toLocaleString("id-ID")}\n` +
+          `➕ |Pemasukan:* ${exportData.totalPemasukan.toLocaleString("id-ID")}\n` +
+          `➖ |Pengeluaran:* ${exportData.totalPengeluaran.toLocaleString("id-ID")}\n` +
+          `📉 |Saldo Akhir:* ${exportData.totalSaldoAkhir.toLocaleString("id-ID")}\n\n` +
+          `⚠️ |Selisih Stok:* ${exportData.totalSelisih.toLocaleString("id-ID")} (${selisihStatus})\n` +
+          `🕐 |Waktu Export:* ${format(new Date(), "dd MMM yyyy HH:mm:ss", { locale: id })}\n` +
+          `👤 |Diekspor oleh:* ${exportData.userName || "Unknown"} ${exportData.userBagian ? `(${exportData.userBagian})` : ""}\n` +
+          `💻 |User Agent:* ${exportData.userAgent || "Unknown"}`,
         parseMode: "Markdown",
       }),
     });
@@ -97,12 +101,29 @@ export default function BarangJadiPage() {
   const [tgl1, setTgl1] = useState(defaultTgl1);
   const [tgl2, setTgl2] = useState(defaultTgl2);
 
+  // Menggunakan UserContext
+  const { user, isLoading: userLoading } = useUser();
+
+  // Mendapatkan informasi user dengan berbagai kemungkinan field name
+  const getUserInfo = useCallback(() => {
+    if (!user) return { name: "Unknown", bagian: "Unknown" };
+
+    // Coba berbagai kemungkinan field name
+    const name =
+      user.Nama || user.name || user.UserName || user.username || "Unknown";
+    const bagian = user.Bagian || user.role || user.jabatan || "Unknown";
+
+    return { name, bagian };
+  }, [user]);
+
+  const userInfo = getUserInfo();
+
   const fetchData = useCallback(async (tglAwal: string, tglAkhir: string) => {
     setLoading(true);
     setError(null);
 
     try {
-     const response = await getBarangJadi(tglAwal, tglAkhir);
+      const response = await getBarangJadi(tglAwal, tglAkhir);
 
       if (response.success && response.data) {
         setData(response.data);
@@ -128,10 +149,7 @@ export default function BarangJadiPage() {
     fetchData(tglAwal, tglAkhir);
   };
 
-  // app/mutasi/bahan-baku/page.tsx
-  // Perbaiki fungsi exportToExcel
-
-  const exportToExcel = async() => {
+  const exportToExcel = async () => {
     try {
       if (data.length === 0) {
         alert("Tidak ada data untuk diexport");
@@ -145,6 +163,7 @@ export default function BarangJadiPage() {
       const reportTitle = "LAPORAN MUTASI BARANG JADI";
       const periode = `Periode: ${format(new Date(tgl1), "dd MMMM yyyy")} - ${format(new Date(tgl2), "dd MMMM yyyy")}`;
       const tanggalCetak = `Tanggal Cetak: ${format(new Date(), "dd MMMM yyyy HH:mm:ss")}`;
+      // const dieksporOleh = `Diekspor oleh: ${userInfo.name} (${userInfo.bagian})`; // Tambahkan info user
       const totalData = `Total Data: ${data.length} item`;
 
       // Header kolom
@@ -235,6 +254,7 @@ export default function BarangJadiPage() {
         [reportTitle],
         [periode],
         [tanggalCetak],
+        // [dieksporOleh], // Tambahkan baris untuk info user
         [totalData],
         [], // Baris kosong
         columnHeaders,
@@ -254,8 +274,10 @@ export default function BarangJadiPage() {
       ws["!merges"].push({ s: { r: 1, c: 0 }, e: { r: 1, c: 11 } });
       // Merge untuk tanggal cetak (baris 3)
       ws["!merges"].push({ s: { r: 2, c: 0 }, e: { r: 2, c: 11 } });
-      // Merge untuk total data (baris 4)
+      // Merge untuk diekspor oleh (baris 4)
       ws["!merges"].push({ s: { r: 3, c: 0 }, e: { r: 3, c: 11 } });
+      // Merge untuk total data (baris 5)
+      ws["!merges"].push({ s: { r: 4, c: 0 }, e: { r: 4, c: 11 } });
       // Merge untuk baris TOTAL (baris terakhir - 2)
       ws["!merges"].push({
         s: { r: wsData.length - 2, c: 0 },
@@ -278,7 +300,7 @@ export default function BarangJadiPage() {
         { wch: 12 }, // Pengeluaran
         { wch: 12 }, // Penyesuaian
         { wch: 15 }, // Saldo Akhir
-        { wch: 12 }, // Stok Opname
+        { wch: 15 }, // Hasil Pencacahan
         { wch: 12 }, // Selisih
         { wch: 30 }, // Keterangan
       ];
@@ -289,9 +311,10 @@ export default function BarangJadiPage() {
         { hpt: 30 }, // Baris 1 (judul)
         { hpt: 20 }, // Baris 2 (periode)
         { hpt: 20 }, // Baris 3 (tanggal cetak)
-        { hpt: 20 }, // Baris 4 (total data)
-        { hpt: 5 }, // Baris 5 (baris kosong)
-        { hpt: 25 }, // Baris 6 (header kolom)
+        // { hpt: 20 }, // Baris 4 (diekspor oleh)
+        { hpt: 20 }, // Baris 5 (total data)
+        { hpt: 5 }, // Baris 6 (baris kosong)
+        { hpt: 25 }, // Baris 7 (header kolom)
       ];
 
       // Tambahkan worksheet ke workbook
@@ -300,23 +323,27 @@ export default function BarangJadiPage() {
       // Download file
       const fileName = `LAPORAN_BARANG_JADI_${tgl1}_${tgl2}.xlsx`;
       XLSX.writeFile(wb, fileName);
-       // Kirim notifikasi ke Telegram
-            await sendTelegramNotification({
-              fileName,
-              periode: `${format(new Date(tgl1), "dd MMM yyyy")} - ${format(new Date(tgl2), "dd MMM yyyy")}`,
-              totalData: data.length,
-              totalSaldoAwal,
-              totalPemasukan,
-              totalPengeluaran,
-              totalSaldoAkhir,
-              totalSelisih,
-              userAgent: navigator.userAgent,
-            });
+
+      // Kirim notifikasi ke Telegram
+      await sendTelegramNotification({
+        fileName,
+        periode: `${format(new Date(tgl1), "dd MMM yyyy")} - ${format(new Date(tgl2), "dd MMM yyyy")}`,
+        totalData: data.length,
+        totalSaldoAwal,
+        totalPemasukan,
+        totalPengeluaran,
+        totalSaldoAkhir,
+        totalSelisih,
+        userAgent: navigator.userAgent,
+        userName: userInfo.name,
+        userBagian: userInfo.bagian,
+      });
     } catch (error) {
       console.error("Export error:", error);
       alert("Gagal mengexport data");
     }
   };
+
   // Hitung total untuk summary
   const totalSaldoAwal = data.reduce(
     (sum, item) => sum + (item.saldoawal || 0),
@@ -334,15 +361,23 @@ export default function BarangJadiPage() {
     (sum, item) => sum + (item.SaldoAkhir || 0),
     0,
   );
-  const totalSelisih = data.reduce(
-    (sum, item) => sum + (item.selisih || 0),
-    0,
-  );
+  const totalSelisih = data.reduce((sum, item) => sum + (item.selisih || 0), 0);
+
+  // Loading state untuk user
+  if (userLoading) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="flex flex-col gap-6">
-        {/* Header */}
+        {/* Header dengan informasi user */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
             <h1 className="text-3xl font-bold">Mutasi Barang Jadi</h1>
@@ -350,6 +385,8 @@ export default function BarangJadiPage() {
               Laporan mutasi barang jadi periode {formatDate(tgl1)} -{" "}
               {formatDate(tgl2)}
             </p>
+            {/* Menampilkan user dari context */}
+   
           </div>
           <div className="flex gap-2">
             <Button
