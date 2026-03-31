@@ -175,16 +175,29 @@ export default function Home() {
             </CardContent>
 
             <CardFooter>
+              <div className="flex flex-col w-full gap-2">
+
+              <Button
+                className="w-full bg-yellow-500 hover:bg-yellow-600 text-white"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleNavigation("/api/cctv/login2");
+                }}
+                >
+                Login ke CCTV 2
+                <ArrowRight className="w-4 h-4 ml-2" />
+              </Button>
               <Button
                 className="w-full bg-yellow-500 hover:bg-yellow-600 text-white"
                 onClick={(e) => {
                   e.stopPropagation();
                   handleNavigation("/api/cctv/login");
                 }}
-              >
-                Login ke CCTV
+                >
+                Login ke CCTV 1
                 <ArrowRight className="w-4 h-4 ml-2" />
               </Button>
+                </div>
             </CardFooter>
           </Card>
         </div>
