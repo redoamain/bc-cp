@@ -154,6 +154,7 @@ export async function GET(request: NextRequest) {
         stokopname: item.stokopname ? Number(item.stokopname) : 0,
         seleisih: item.seleisih ? Number(item.seleisih) : 0,
         keterangan: item.keterangan || item.Keterangan || "",
+        Penggunaan: item.Penggunaan ? Number(item.Penggunaan) : 0,
       }));
       transformedData.push(...transformedChunk);
 

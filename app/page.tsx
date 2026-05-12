@@ -181,20 +181,10 @@ export default function Home() {
                 className="w-full bg-yellow-500 hover:bg-yellow-600 text-white"
                 onClick={(e) => {
                   e.stopPropagation();
-                  handleNavigation("/api/cctv/login2");
-                }}
-                >
-                Login ke CCTV 2
-                <ArrowRight className="w-4 h-4 ml-2" />
-              </Button>
-              <Button
-                className="w-full bg-yellow-500 hover:bg-yellow-600 text-white"
-                onClick={(e) => {
-                  e.stopPropagation();
                   handleNavigation("/api/cctv/login");
                 }}
                 >
-                Login ke CCTV 1
+                Login ke CCTV 
                 <ArrowRight className="w-4 h-4 ml-2" />
               </Button>
                 </div>

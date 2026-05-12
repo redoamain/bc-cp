@@ -72,4 +72,5 @@ export interface MutasiType{
   selisih:number;
   Keterangan:string;
   Pencacahan:number;
+  Penggunaan: number;
   }

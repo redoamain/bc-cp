@@ -120,6 +120,31 @@ export const columns: ColumnDef<MutasiType>[] = [
     },
     size: 120,
   },
+
+  {
+    accessorKey: "Penggunaan",
+    header: ({ column }) => {
+      return (
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+          className="font-semibold text-right"
+        >
+          Penggunaan
+          <ArrowUpDown className="ml-2 h-4 w-4" />
+        </Button>
+      );
+    },
+    cell: ({ row }) => {
+      const value = row.getValue("Penggunaan") as number;
+      return (
+        <div className="text-right font-mono text-red-600">
+          {formatNumber(value)}
+        </div>
+      );
+    },
+    size: 120,
+  },
   {
     accessorKey: "Pengeluaran",
     header: ({ column }) => {
