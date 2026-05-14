@@ -16,6 +16,9 @@ import {
   ClipboardList,
   Archive,
   Grid2X2,
+  Eye, // Tambahkan icon untuk tracking
+  Truck,
+  Factory, // Atau gunakan icon lain
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -104,6 +107,17 @@ export default function Navbar({
       href: "/log",
       icon: ClipboardList,
     },
+    // TAMBAHKAN MENU TRACKING DI SINI
+    // {
+    //   title: "Tracking",
+    //   href: "/tracking-pemasukan-produksi",
+    //   icon: Eye, // Atau Truck, atau ClipboardCheck
+    // },
+    {
+      title: "Bahan → Jadi",
+      href: "/tracking-bahan-ke-jadi",
+      icon: Factory, // atau icon lain
+    },
   ];
 
   // Submenu items untuk Mutasi
@@ -112,8 +126,7 @@ export default function Navbar({
       title: "Bahan Baku",
       href: "/baku",
       icon: Package,
-      description:
-        "Mutasi bahan baku produksi",
+      description: "Mutasi bahan baku produksi",
     },
     {
       title: "Barang Jadi",
@@ -243,7 +256,7 @@ export default function Navbar({
                 {/* Menu Mutasi dengan NavigationMenu */}
                 <NavigationMenuItem>
                   <NavigationMenuTrigger className="gap-2 h-9 px-3 data-[state=open]:bg-gray-100">
-                    <RotateCcw className="h-4 w-4" />   
+                    <RotateCcw className="h-4 w-4" />
                     Mutasi
                   </NavigationMenuTrigger>
                   <NavigationMenuContent>

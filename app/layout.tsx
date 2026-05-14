@@ -4,7 +4,7 @@ import { GeistSans } from "geist/font/sans";
 import { GeistMono } from "geist/font/mono";
 import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
-
+import { TooltipProvider } from "@/components/ui/tooltip";
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
@@ -91,7 +91,10 @@ export default function RootLayout({
         className={`${GeistSans.variable} ${GeistMono.variable} antialiased`}
       >
         <Toaster position="top-right" richColors closeButton />
+        <TooltipProvider>
+
         {children}
+        </TooltipProvider>
       </body>
     </html>
   );
