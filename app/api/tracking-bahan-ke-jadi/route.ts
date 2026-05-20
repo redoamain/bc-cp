@@ -112,7 +112,28 @@ export async function GET(request: Request) {
       });
     }
 
-    // 5. Group hasil berdasarkan SPK
+    // 5. Group hasil berdasarkan SPK dan ItemID_Hasil (untuk memastikan relasi yang tepat)
+    const hasilBySPKAndItem = new Map(); // Key: "SPK|ItemID_Hasil"
+    for (const item of hasilData) {
+      const spk = item.SPK;
+      const itemId = item.ItemID_Hasil;
+      if (!spk || !itemId) continue;
+
+      const key = `${spk}|${itemId}`;
+      if (!hasilBySPKAndItem.has(key)) {
+        hasilBySPKAndItem.set(key, []);
+      }
+      hasilBySPKAndItem.get(key).push({
+        ProdID_Hasil: item.ProdID_Hasil || "-",
+        ItemID_Hasil: item.ItemID_Hasil || "-",
+        Jumlah_Hasil: item.Jumlah_Hasil || 0,
+        Tanggal_Hasil: item.Tanggal_Hasil || "-",
+        SPK: item.SPK || "-",
+        PIC_Hasil: item.PIC_Hasil || "-",
+      });
+    }
+
+    // Juga buat group hasil berdasarkan SPK saja untuk keperluan lain
     const hasilBySPK = new Map();
     for (const item of hasilData) {
       const spk = item.SPK;
@@ -166,7 +187,7 @@ export async function GET(request: Request) {
         ? new Date(item.TanggalBPB).toISOString().split("T")[0]
         : null;
       const pemasok = item.PemasokPengirim || "-";
-      const jenisDokumen = item.JenisDokPabean || "-"; // ← TAMBAHKAN INI
+      const jenisDokumen = item.JenisDokPabean || "-";
 
       // Cari pemakaian bahan ini di produksi (sudah terfilter Jumlah > 0)
       const pemakaianList = bahanByItem.get(itemId) || [];
@@ -175,20 +196,34 @@ export async function GET(request: Request) {
         0,
       );
 
-      // Cari barang jadi yang dihasilkan dari SPK yang SAMA dengan pemakaian VALID
+      // 🔥 PERBAIKAN: Cari barang jadi yang dihasilkan dari SPK yang SAMA dengan pemakaian
       const semuaBarangJadi = [];
+      const spkSudahDiproses = new Set(); // Untuk menghindari duplikasi SPK
+      
       for (const pemakaian of pemakaianList) {
-        const hasilList = hasilBySPK.get(pemakaian.SPK) || [];
-        for (const hasil of hasilList) {
-          semuaBarangJadi.push({
-            ProdID_Hasil: hasil.ProdID_Hasil,
-            ItemID: hasil.ItemID_Hasil,
-            NamaBarang: hasil.ItemID_Hasil || "-",
-            Jumlah_Kgs: hasil.Jumlah_Hasil,
-            Tanggal_Produksi: hasil.Tanggal_Hasil,
-            SPK: pemakaian.SPK,
-            PIC_Hasil: hasil.PIC_Hasil,
-          });
+        const spk = pemakaian.SPK;
+        
+        // Hanya proses jika SPK belum diproses
+        if (!spkSudahDiproses.has(spk)) {
+          spkSudahDiproses.add(spk);
+          
+          // Cari hasil dengan SPK yang sama persis
+          const hasilList = hasilBySPK.get(spk) || [];
+          
+          for (const hasil of hasilList) {
+            // Pastikan SPK hasil sama dengan SPK pemakaian
+            if (hasil.SPK === spk) {
+              semuaBarangJadi.push({
+                ProdID_Hasil: hasil.ProdID_Hasil,
+                ItemID: hasil.ItemID_Hasil,
+                NamaBarang: hasil.ItemID_Hasil || "-",
+                Jumlah_Kgs: hasil.Jumlah_Hasil,
+                Tanggal_Produksi: hasil.Tanggal_Hasil,
+                SPK: spk,
+                PIC_Hasil: hasil.PIC_Hasil,
+              });
+            }
+          }
         }
       }
 
@@ -218,7 +253,7 @@ export async function GET(request: Request) {
       resultData.push({
         ItemID_Bahan: itemId,
         NamaBahan: namaBahan,
-        JenisDokumen: jenisDokumen, // ← TAMBAHKAN INI
+        JenisDokumen: jenisDokumen,
         NomorBPB: nomorBPB,
         TanggalBPB: tanggalBPB,
         Pemasok: pemasok,

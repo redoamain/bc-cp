@@ -80,26 +80,26 @@ const StockDetail = ({ item }: { item: TrackingItem }) => {
           <div className="grid grid-cols-2 gap-1">
             <span className="text-gray-500">Stok Awal:</span>
             <span className="font-medium">
-              {(item.StokAwal || 0).toLocaleString()} Kgs
+              {(item.StokAwal || 0).toLocaleString()} 
             </span>
             <span className="text-gray-500">+ Masuk:</span>
             <span className="font-medium text-green-600">
-              + {(item.JumlahMasuk_Kgs || 0).toLocaleString()} Kgs
+              + {(item.JumlahMasuk_Kgs || 0).toLocaleString()} 
             </span>
             <span className="text-gray-500">= Tersedia:</span>
             <span className="font-medium">
-              {(item.TotalStokTersedia || 0).toLocaleString()} Kgs
+              {(item.TotalStokTersedia || 0).toLocaleString()} 
             </span>
             <span className="text-gray-500">- Terpakai:</span>
             <span className="font-medium text-red-600">
-              - {(item.TotalKgsTerpakai || 0).toLocaleString()} Kgs
+              - {(item.TotalKgsTerpakai || 0).toLocaleString()} 
             </span>
             <div className="border-t pt-1 mt-1 col-span-2">
               <span className="font-bold">Stock Sekarang:</span>
               <span
                 className={`font-bold ml-2 ${(item.StockSekarang || 0) < 0 ? "text-red-600" : "text-green-600"}`}
               >
-                {(item.StockSekarang || 0).toLocaleString()} Kgs
+                {(item.StockSekarang || 0).toLocaleString()} 
               </span>
             </div>
           </div>
@@ -129,7 +129,7 @@ const ProduksiList = ({ produksiList }: { produksiList: ProduksiUsage[] }) => {
         className="text-xs text-blue-600 hover:underline"
       >
         {expanded ? "▼" : "▶"} {produksiList.length} produksi (
-        {totalKgs.toLocaleString()} Kgs)
+        {totalKgs.toLocaleString()} )
       </button>
       {expanded && (
         <div className="mt-2 space-y-2 max-h-60 overflow-auto">
@@ -143,7 +143,7 @@ const ProduksiList = ({ produksiList }: { produksiList: ProduksiUsage[] }) => {
               </div>
               <div className="text-gray-500">SPK: {prod.SPK || "-"}</div>
               <div className="text-gray-700 font-medium">
-                Jumlah: {(prod.Jumlah_Bahan || 0).toLocaleString()} Kgs
+                Jumlah: {(prod.Jumlah_Bahan || 0).toLocaleString()} 
               </div>
               <div className="text-gray-400">PIC: {prod.PIC_Bahan || "-"}</div>
               <div className="text-gray-400 text-xs">
@@ -181,7 +181,7 @@ const BarangJadiList = ({
         className="text-xs text-green-600 hover:underline font-medium"
       >
         {expanded ? "▼" : "▶"} {barangJadiList.length} barang jadi (
-        {totalJadi.toLocaleString()} Kgs)
+        {totalJadi.toLocaleString()} )
       </button>
       {expanded && (
         <div className="mt-2 space-y-2 max-h-60 overflow-auto">
@@ -199,7 +199,7 @@ const BarangJadiList = ({
                 ProdID: {bj.ProdID_Hasil || "-"}
               </div>
               <div className="text-gray-700 font-medium">
-                Jumlah: {(bj.Jumlah_Kgs || 0).toLocaleString()} Kgs
+                Jumlah: {(bj.Jumlah_Kgs || 0).toLocaleString()} 
               </div>
               <div className="text-gray-400">PIC: {bj.PIC_Hasil || "-"}</div>
               <div className="text-gray-400 text-xs">
@@ -257,7 +257,7 @@ const columns: ColumnDef<TrackingItem>[] = [
   },
   {
     accessorKey: "JumlahMasuk_Kgs",
-    header: "Masuk (Kgs)",
+    header: "Masuk ()",
     size: 100,
     cell: ({ row }) => (
       <span className="font-medium text-blue-600">
@@ -381,7 +381,7 @@ const columns: ColumnDef<TrackingItem>[] = [
         <div
           className={`${bgColor} px-2 py-1 rounded-lg text-center font-medium`}
         >
-          {stock.toLocaleString()} Kgs
+          {stock.toLocaleString()} 
           <div className="text-xs flex items-center justify-center gap-1">
             {icon}
             {status}
@@ -505,7 +505,7 @@ export default function TrackingBahanKeJadiPage() {
             </CardHeader>
             <CardContent>
               <p className="text-sm font-bold text-blue-600">
-                {(summary.total_jumlah_masuk || 0).toLocaleString()} Kgs
+                {(summary.total_jumlah_masuk || 0).toLocaleString()} 
               </p>
             </CardContent>
           </Card>
@@ -517,7 +517,7 @@ export default function TrackingBahanKeJadiPage() {
             </CardHeader>
             <CardContent>
               <p className="text-sm font-bold text-purple-600">
-                {(summary.total_terpakai || 0).toLocaleString()} Kgs
+                {(summary.total_terpakai || 0).toLocaleString()} 
               </p>
             </CardContent>
           </Card>
@@ -527,7 +527,7 @@ export default function TrackingBahanKeJadiPage() {
             </CardHeader>
             <CardContent>
               <p className="text-sm font-bold text-green-600">
-                {(summary.total_barang_jadi || 0).toLocaleString()} Kgs
+                {(summary.total_barang_jadi || 0).toLocaleString()} 
               </p>
             </CardContent>
           </Card>
