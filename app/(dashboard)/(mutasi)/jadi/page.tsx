@@ -23,7 +23,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { getBarangJadi } from "@/lib/services/mutasiService";
-import { useUser } from "../../../contexts/UserContext"; // Import useUser
+import { useUser } from "../../../contexts/UserContext";
 
 const formatDate = (date: Date | string) => {
   return format(new Date(date), "dd MMM yyyy", { locale: id });
@@ -32,6 +32,19 @@ const formatDate = (date: Date | string) => {
 const formatNumber = (value: number) => {
   if (!value && value !== 0) return "-";
   return value.toLocaleString("id-ID");
+};
+
+// Helper function untuk parsing Penyesuaian (string dengan tanda + atau -)
+const parsePenyesuaian = (value: string | number | null | undefined): number => {
+  if (value === null || value === undefined) return 0;
+  if (typeof value === 'number') return value;
+  if (typeof value === 'string') {
+    // Hilangkan tanda + atau - dan parse ke number
+    const cleaned = value.replace(/[+]/g, '');
+    const parsed = parseFloat(cleaned);
+    return isNaN(parsed) ? 0 : parsed;
+  }
+  return 0;
 };
 
 // Fungsi untuk mengirim notifikasi ke Telegram
@@ -64,17 +77,17 @@ const sendTelegramNotification = async (exportData: {
       body: JSON.stringify({
         message:
           `📦 |LAPORAN MUTASI BARANG JADI DIEXPORT\n\n` +
-          `📁 |File:* ${exportData.fileName}\n` +
-          `📅 |Periode:* ${exportData.periode}\n` +
-          `📊 |Total Item:* ${exportData.totalData} barang jadi\n\n` +
-          `📈 |Saldo Awal:* ${exportData.totalSaldoAwal.toLocaleString("id-ID")}\n` +
-          `➕ |Pemasukan:* ${exportData.totalPemasukan.toLocaleString("id-ID")}\n` +
-          `➖ |Pengeluaran:* ${exportData.totalPengeluaran.toLocaleString("id-ID")}\n` +
-          `📉 |Saldo Akhir:* ${exportData.totalSaldoAkhir.toLocaleString("id-ID")}\n\n` +
-          `⚠️ |Selisih Stok:* ${exportData.totalSelisih.toLocaleString("id-ID")} (${selisihStatus})\n` +
-          `🕐 |Waktu Export:* ${format(new Date(), "dd MMM yyyy HH:mm:ss", { locale: id })}\n` +
-          `👤 |Diekspor oleh:* ${exportData.userName || "Unknown"} ${exportData.userBagian ? `(${exportData.userBagian})` : ""}\n` +
-          `💻 |User Agent:* ${exportData.userAgent || "Unknown"}`,
+          `📁 |File: ${exportData.fileName}\n` +
+          `📅 |Periode: ${exportData.periode}\n` +
+          `📊 |Total Item: ${exportData.totalData} barang jadi\n\n` +
+          `📈 |Saldo Awal: ${exportData.totalSaldoAwal.toLocaleString("id-ID")}\n` +
+          `➕ |Pemasukan: ${exportData.totalPemasukan.toLocaleString("id-ID")}\n` +
+          `➖ |Pengeluaran: ${exportData.totalPengeluaran.toLocaleString("id-ID")}\n` +
+          `📉 |Saldo Akhir: ${exportData.totalSaldoAkhir.toLocaleString("id-ID")}\n\n` +
+          `⚠️ |Selisih Stok: ${exportData.totalSelisih.toLocaleString("id-ID")} (${selisihStatus})\n` +
+          `🕐 |Waktu Export: ${format(new Date(), "dd MMM yyyy HH:mm:ss", { locale: id })}\n` +
+          `👤 |Diekspor oleh: ${exportData.userName || "Unknown"} ${exportData.userBagian ? `(${exportData.userBagian})` : ""}\n` +
+          `💻 |User Agent: ${exportData.userAgent || "Unknown"}`,
         parseMode: "Markdown",
       }),
     });
@@ -163,7 +176,6 @@ export default function BarangJadiPage() {
       const reportTitle = "LAPORAN MUTASI BARANG JADI";
       const periode = `Periode: ${format(new Date(tgl1), "dd MMMM yyyy")} - ${format(new Date(tgl2), "dd MMMM yyyy")}`;
       const tanggalCetak = `Tanggal Cetak: ${format(new Date(), "dd MMMM yyyy HH:mm:ss")}`;
-      // const dieksporOleh = `Diekspor oleh: ${userInfo.name} (${userInfo.bagian})`; // Tambahkan info user
       const totalData = `Total Data: ${data.length} item`;
 
       // Header kolom
@@ -193,7 +205,7 @@ export default function BarangJadiPage() {
         item.Pemasukan || 0,
         item.Penggunaan || 0,
         item.Pengeluaran || 0,
-        item.Penyesuaian || 0,
+        item.Penyesuaian || "0",
         item.SaldoAkhir || 0,
         item.Pencacahan || 0,
         item.selisih || 0,
@@ -214,7 +226,7 @@ export default function BarangJadiPage() {
         0,
       );
       const totalPenyesuaian = data.reduce(
-        (sum, item) => sum + (item.Penyesuaian || 0),
+        (sum, item) => sum + parsePenyesuaian(item.Penyesuaian),
         0,
       );
       const totalSaldoAkhir = data.reduce(
@@ -256,7 +268,6 @@ export default function BarangJadiPage() {
         [reportTitle],
         [periode],
         [tanggalCetak],
-        // [dieksporOleh], // Tambahkan baris untuk info user
         [totalData],
         [], // Baris kosong
         columnHeaders,
@@ -276,10 +287,8 @@ export default function BarangJadiPage() {
       ws["!merges"].push({ s: { r: 1, c: 0 }, e: { r: 1, c: 11 } });
       // Merge untuk tanggal cetak (baris 3)
       ws["!merges"].push({ s: { r: 2, c: 0 }, e: { r: 2, c: 11 } });
-      // Merge untuk diekspor oleh (baris 4)
+      // Merge untuk total data (baris 4)
       ws["!merges"].push({ s: { r: 3, c: 0 }, e: { r: 3, c: 11 } });
-      // Merge untuk total data (baris 5)
-      ws["!merges"].push({ s: { r: 4, c: 0 }, e: { r: 4, c: 11 } });
       // Merge untuk baris TOTAL (baris terakhir - 2)
       ws["!merges"].push({
         s: { r: wsData.length - 2, c: 0 },
@@ -313,10 +322,9 @@ export default function BarangJadiPage() {
         { hpt: 30 }, // Baris 1 (judul)
         { hpt: 20 }, // Baris 2 (periode)
         { hpt: 20 }, // Baris 3 (tanggal cetak)
-        // { hpt: 20 }, // Baris 4 (diekspor oleh)
-        { hpt: 20 }, // Baris 5 (total data)
-        { hpt: 5 }, // Baris 6 (baris kosong)
-        { hpt: 25 }, // Baris 7 (header kolom)
+        { hpt: 20 }, // Baris 4 (total data)
+        { hpt: 5 }, // Baris 5 (baris kosong)
+        { hpt: 25 }, // Baris 6 (header kolom)
       ];
 
       // Tambahkan worksheet ke workbook
@@ -387,8 +395,6 @@ export default function BarangJadiPage() {
               Laporan mutasi barang jadi periode {formatDate(tgl1)} -{" "}
               {formatDate(tgl2)}
             </p>
-            {/* Menampilkan user dari context */}
-   
           </div>
           <div className="flex gap-2">
             <Button

@@ -34,6 +34,19 @@ const formatNumber = (value: number) => {
   return value.toLocaleString("id-ID");
 };
 
+// Helper function untuk parsing Penyesuaian (string dengan tanda + atau -)
+const parsePenyesuaian = (value: string | number | null | undefined): number => {
+  if (value === null || value === undefined) return 0;
+  if (typeof value === 'number') return value;
+  if (typeof value === 'string') {
+    // Hilangkan tanda + atau - dan parse ke number
+    const cleaned = value.replace(/[+]/g, '');
+    const parsed = parseFloat(cleaned);
+    return isNaN(parsed) ? 0 : parsed;
+  }
+  return 0;
+};
+
 // Fungsi untuk mengirim notifikasi ke Telegram
 const sendTelegramNotification = async (exportData: {
   fileName: string;
@@ -194,7 +207,7 @@ export default function BahanBakuPage() {
         item.Pemasukan || 0,
         item.Penggunaan || 0,
         item.Pengeluaran || 0,
-        item.Penyesuaian || 0,
+        item.Penyesuaian || "0",
         item.SaldoAkhir || 0,
         item.Pencacahan || 0,
         item.selisih || 0,
@@ -215,7 +228,7 @@ export default function BahanBakuPage() {
         0,
       );
       const totalPenyesuaian = data.reduce(
-        (sum, item) => sum + (item.Penyesuaian || 0),
+        (sum, item) => sum + parsePenyesuaian(item.Penyesuaian),
         0,
       );
       const totalSaldoAkhir = data.reduce(
@@ -276,10 +289,8 @@ export default function BahanBakuPage() {
       ws["!merges"].push({ s: { r: 1, c: 0 }, e: { r: 1, c: 11 } });
       // Merge untuk tanggal cetak (baris 3)
       ws["!merges"].push({ s: { r: 2, c: 0 }, e: { r: 2, c: 11 } });
-      // Merge untuk diekspor oleh (baris 4)
+      // Merge untuk total data (baris 4)
       ws["!merges"].push({ s: { r: 3, c: 0 }, e: { r: 3, c: 11 } });
-      // Merge untuk total data (baris 5)
-      ws["!merges"].push({ s: { r: 4, c: 0 }, e: { r: 4, c: 11 } });
       // Merge untuk baris TOTAL (baris terakhir - 2)
       ws["!merges"].push({
         s: { r: wsData.length - 2, c: 0 },
@@ -313,9 +324,9 @@ export default function BahanBakuPage() {
         { hpt: 30 }, // Baris 1 (judul)
         { hpt: 20 }, // Baris 2 (periode)
         { hpt: 20 }, // Baris 3 (tanggal cetak)
-        { hpt: 20 }, // Baris 5 (total data)
-        { hpt: 5 }, // Baris 6 (baris kosong)
-        { hpt: 25 }, // Baris 7 (header kolom)
+        { hpt: 20 }, // Baris 4 (total data)
+        { hpt: 5 }, // Baris 5 (baris kosong)
+        { hpt: 25 }, // Baris 6 (header kolom)
       ];
 
       // Tambahkan worksheet ke workbook
@@ -386,7 +397,6 @@ export default function BahanBakuPage() {
               Laporan mutasi bahan baku periode {formatDate(tgl1)} -{" "}
               {formatDate(tgl2)}
             </p>
-       
           </div>
           <div className="flex gap-2">
             <Button

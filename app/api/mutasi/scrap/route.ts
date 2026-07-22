@@ -38,7 +38,8 @@ export async function GET(request: NextRequest) {
             saldoawal: item.saldoawal ? Number(item.saldoawal) : 0,
             Pemasukan: item.Pemasukan ? Number(item.Pemasukan) : 0,
             Pengeluaran: item.Pengeluaran ? Number(item.Pengeluaran) : 0,
-            Penyesuaian: item.Penyesuaian ? Number(item.Penyesuaian) : 0,
+              // Penyesuaian tetap sebagai string (bisa berupa "+200" atau "-200")
+      Penyesuaian: item.Penyesuaian || "0",
             SaldoAkhir: item.SaldoAkhir ? Number(item.SaldoAkhir) : 0,
             stokopname: item.stokopname ? Number(item.stokopname) : 0,
             selisih: item.selisih ? Number(item.selisih) : 0,

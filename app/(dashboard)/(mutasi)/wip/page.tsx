@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
-// app/mutasi/barang-jadi/page.tsx
+// app/mutasi/wip/page.tsx
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
@@ -21,7 +21,8 @@ import {
   TrendingDown,
 } from "lucide-react";
 import { getWIP } from "@/lib/services/mutasiService";
-import { useUser } from "../../../contexts/UserContext"; // Import useUser
+import { useUser } from "../../../contexts/UserContext";
+
 const formatDate = (date: Date | string) => {
   return format(new Date(date), "dd MMM yyyy", { locale: id });
 };
@@ -30,19 +31,30 @@ const formatNumber = (value: number) => {
   if (!value && value !== 0) return "-";
   return value.toLocaleString("id-ID");
 };
+
+// Helper function untuk parsing Penyesuaian (string dengan tanda + atau -)
+const parsePenyesuaian = (value: string | number | null | undefined): number => {
+  if (value === null || value === undefined) return 0;
+  if (typeof value === 'number') return value;
+  if (typeof value === 'string') {
+    const cleaned = value.replace(/[+]/g, '');
+    const parsed = parseFloat(cleaned);
+    return isNaN(parsed) ? 0 : parsed;
+  }
+  return 0;
+};
+
 // Fungsi untuk mengirim notifikasi ke Telegram
 const sendTelegramNotification = async (exportData: {
   fileName: string;
   periode: string;
   totalData: number;
   totalSaldoAkhir: number;
-
   userAgent?: string;
   userName?: string;
   userBagian?: string;
 }) => {
   try {
-   
     const response = await fetch("/api/notif", {
       method: "POST",
       headers: {
@@ -69,6 +81,7 @@ const sendTelegramNotification = async (exportData: {
     console.error("Error sending Telegram notification:", error);
   }
 };
+
 export default function WipPage() {
   const today = new Date();
   const defaultTgl2 = format(today, "yyyy-MM-dd");
@@ -90,7 +103,6 @@ export default function WipPage() {
   const getUserInfo = useCallback(() => {
     if (!user) return { name: "Unknown", bagian: "Unknown" };
 
-    // Coba berbagai kemungkinan field name
     const name =
       user.Nama || user.name || user.UserName || user.username || "Unknown";
     const bagian = user.Bagian || user.role || user.jabatan || "Unknown";
@@ -105,7 +117,7 @@ export default function WipPage() {
     setError(null);
 
     try {
-       const response = await getWIP(tglAwal, tglAkhir);
+      const response = await getWIP(tglAwal, tglAkhir);
       if (response.success && response.data) {
         setData(response.data);
         setTgl1(tglAwal);
@@ -124,14 +136,11 @@ export default function WipPage() {
 
   useEffect(() => {
     fetchData(defaultTgl1, defaultTgl2);
-  }, [defaultTgl1, defaultTgl2, fetchData]);
+  }, [fetchData, defaultTgl1, defaultTgl2]);
 
   const handleFilter = (tglAwal: string, tglAkhir: string) => {
     fetchData(tglAwal, tglAkhir);
   };
-
-  // app/mutasi/bahan-baku/page.tsx
-  // Perbaiki fungsi exportToExcel
 
   const exportToExcel = async () => {
     try {
@@ -140,16 +149,13 @@ export default function WipPage() {
         return;
       }
 
-      // Buat workbook baru
       const wb = XLSX.utils.book_new();
 
-      // Data untuk header laporan
       const reportTitle = "LAPORAN POSISI BARANG WIP (Work In Progress)";
       const periode = `Periode: ${format(new Date(tgl1), "dd MMMM yyyy")} - ${format(new Date(tgl2), "dd MMMM yyyy")}`;
       const tanggalCetak = `Tanggal Cetak: ${format(new Date(), "dd MMMM yyyy HH:mm:ss")}`;
       const totalData = `Total Data: ${data.length} item`;
 
-      // Header kolom
       const columnHeaders = [
         "No.",
         "Kode Barang",
@@ -159,7 +165,6 @@ export default function WipPage() {
         "Keterangan",
       ];
 
-      // Data rows
       const dataRows = data.map((item, index) => [
         index + 1,
         item.KodeBarang || "-",
@@ -169,122 +174,97 @@ export default function WipPage() {
         item.Keterangan || "-",
       ]);
 
-      //
       const totalSaldoAkhir = data.reduce(
         (sum, item) => sum + (item.SaldoAkhir || 0),
         0,
       );
 
-      // Baris total
       const totalRows = [
-        [], // Baris kosong
+        [],
         [
           "TOTAL",
           "",
           "",
           "",
-       
-       
-        
           totalSaldoAkhir.toLocaleString("id-ID"),
-       
-  
           "",
         ],
-        [], // Baris kosong
+        [],
         ["*** AKHIR LAPORAN ***"],
       ];
 
-      // Gabungkan semua data
       const wsData = [
         [reportTitle],
         [periode],
         [tanggalCetak],
         [totalData],
-        [], // Baris kosong
+        [],
         columnHeaders,
         ...dataRows,
         ...totalRows,
       ];
 
-      // Buat worksheet
       const ws = XLSX.utils.aoa_to_sheet(wsData);
 
-      // Merge cells untuk header laporan
       if (!ws["!merges"]) ws["!merges"] = [];
 
-      // Merge untuk judul laporan (baris 1)
-      ws["!merges"].push({ s: { r: 0, c: 0 }, e: { r: 0, c: 11 } });
-      // Merge untuk periode (baris 2)
-      ws["!merges"].push({ s: { r: 1, c: 0 }, e: { r: 1, c: 11 } });
-      // Merge untuk tanggal cetak (baris 3)
-      ws["!merges"].push({ s: { r: 2, c: 0 }, e: { r: 2, c: 11 } });
-      // Merge untuk total data (baris 4)
-      ws["!merges"].push({ s: { r: 3, c: 0 }, e: { r: 3, c: 11 } });
-      // Merge untuk baris TOTAL (baris terakhir - 2)
+      ws["!merges"].push({ s: { r: 0, c: 0 }, e: { r: 0, c: 4 } });
+      ws["!merges"].push({ s: { r: 1, c: 0 }, e: { r: 1, c: 4 } });
+      ws["!merges"].push({ s: { r: 2, c: 0 }, e: { r: 2, c: 4 } });
+      ws["!merges"].push({ s: { r: 3, c: 0 }, e: { r: 3, c: 4 } });
       ws["!merges"].push({
         s: { r: wsData.length - 2, c: 0 },
         e: { r: wsData.length - 2, c: 3 },
       });
-      // Merge untuk akhir laporan (baris terakhir)
       ws["!merges"].push({
         s: { r: wsData.length - 1, c: 0 },
-        e: { r: wsData.length - 1, c: 11 },
+        e: { r: wsData.length - 1, c: 4 },
       });
 
-      // Atur lebar kolom
       const wscols = [
-        { wch: 5 }, // No.
-        { wch: 15 }, // Kode Barang
-        { wch: 40 }, // Nama Barang
-        { wch: 10 }, // Satuan
-        { wch: 15 }, // Saldo Awal
-        { wch: 12 }, // Pemasukan
-        { wch: 12 }, // Pengeluaran
-        { wch: 12 }, // Penyesuaian
-        { wch: 15 }, // Saldo Akhir
-        { wch: 12 }, // Stok Opname
-        { wch: 12 }, // Selisih
-        { wch: 30 }, // Keterangan
+        { wch: 5 },
+        { wch: 15 },
+        { wch: 40 },
+        { wch: 10 },
+        { wch: 15 },
+        { wch: 30 },
       ];
       ws["!cols"] = wscols;
 
-      // Set row heights untuk header
       ws["!rows"] = [
-        { hpt: 30 }, // Baris 1 (judul)
-        { hpt: 20 }, // Baris 2 (periode)
-        { hpt: 20 }, // Baris 3 (tanggal cetak)
-        { hpt: 20 }, // Baris 4 (total data)
-        { hpt: 5 }, // Baris 5 (baris kosong)
-        { hpt: 25 }, // Baris 6 (header kolom)
+        { hpt: 30 },
+        { hpt: 20 },
+        { hpt: 20 },
+        { hpt: 20 },
+        { hpt: 5 },
+        { hpt: 25 },
       ];
 
-      // Tambahkan worksheet ke workbook
-      XLSX.utils.book_append_sheet(wb, ws, "Bahan Baku");
+      XLSX.utils.book_append_sheet(wb, ws, "WIP");
 
-      // Download file
       const fileName = `LAPORAN_POSISI_BARANG_WIP_${tgl1}_${tgl2}.xlsx`;
       XLSX.writeFile(wb, fileName);
-      // Kirim notifikasi ke Telegram
-                  await sendTelegramNotification({
-                    fileName,
-                    periode: `${format(new Date(tgl1), "dd MMM yyyy")} - ${format(new Date(tgl2), "dd MMM yyyy")}`,
-                    totalData: data.length,
-                    totalSaldoAkhir,
-                    userAgent: navigator.userAgent,
-                    userName: userInfo.name,
-                    userBagian: userInfo.bagian,
-                  });
+
+      await sendTelegramNotification({
+        fileName,
+        periode: `${format(new Date(tgl1), "dd MMM yyyy")} - ${format(new Date(tgl2), "dd MMM yyyy")}`,
+        totalData: data.length,
+        totalSaldoAkhir,
+        userAgent: navigator.userAgent,
+        userName: userInfo.name,
+        userBagian: userInfo.bagian,
+      });
     } catch (error) {
       console.error("Export error:", error);
       alert("Gagal mengexport data");
     }
   };
- 
+
   const totalSaldoAkhir = data.reduce(
     (sum, item) => sum + (item.SaldoAkhir || 0),
     0,
   );
+
   if (userLoading) {
     return (
       <div className="container mx-auto px-4 py-8">
@@ -298,7 +278,6 @@ export default function WipPage() {
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="flex flex-col gap-6">
-        {/* Header */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
             <h1 className="text-3xl font-bold">Laporan Posisi Barang WIP</h1>
@@ -329,7 +308,6 @@ export default function WipPage() {
           </div>
         </div>
 
-        {/* Filter Tanggal */}
         <FilterTanggal
           onFilter={handleFilter}
           isLoading={loading}
@@ -337,7 +315,6 @@ export default function WipPage() {
           defaultTgl2={tgl2}
         />
 
-        {/* Summary Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -371,11 +348,12 @@ export default function WipPage() {
           </Card>
         </div>
 
-     
+        {error && (
+          <Alert variant="destructive">
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
 
-   
-
-        {/* DataTable */}
         <Card>
           <CardContent className="p-6">
             {loading ? (

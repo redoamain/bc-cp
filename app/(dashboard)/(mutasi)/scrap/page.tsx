@@ -1,4 +1,4 @@
-// app/mutasi/barang-jadi/page.tsx
+// app/mutasi/scrap/page.tsx
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
@@ -33,6 +33,20 @@ const formatNumber = (value: number) => {
   if (!value && value !== 0) return "-";
   return value.toLocaleString("id-ID");
 };
+
+// Helper function untuk parsing Penyesuaian (string dengan tanda + atau -)
+const parsePenyesuaian = (value: string | number | null | undefined): number => {
+  if (value === null || value === undefined) return 0;
+  if (typeof value === 'number') return value;
+  if (typeof value === 'string') {
+    // Hilangkan tanda + atau - dan parse ke number
+    const cleaned = value.replace(/[+]/g, '');
+    const parsed = parseFloat(cleaned);
+    return isNaN(parsed) ? 0 : parsed;
+  }
+  return 0;
+};
+
 // Fungsi untuk mengirim notifikasi ke Telegram
 const sendTelegramNotification = async (exportData: {
   fileName: string;
@@ -85,6 +99,7 @@ const sendTelegramNotification = async (exportData: {
     console.error("Error sending Telegram notification:", error);
   }
 };
+
 export default function ScrapPage() {
   const today = new Date();
   const defaultTgl2 = format(today, "yyyy-MM-dd");
@@ -98,6 +113,7 @@ export default function ScrapPage() {
   const [error, setError] = useState<string | null>(null);
   const [tgl1, setTgl1] = useState(defaultTgl1);
   const [tgl2, setTgl2] = useState(defaultTgl2);
+  
   // Menggunakan UserContext
   const { user, isLoading: userLoading } = useUser();
 
@@ -114,6 +130,7 @@ export default function ScrapPage() {
   }, [user]);
 
   const userInfo = getUserInfo();
+
   const fetchData = useCallback(async (tglAwal: string, tglAkhir: string) => {
     setLoading(true);
     setError(null);
@@ -143,9 +160,6 @@ export default function ScrapPage() {
   const handleFilter = (tglAwal: string, tglAkhir: string) => {
     fetchData(tglAwal, tglAkhir);
   };
-
-  // app/mutasi/bahan-baku/page.tsx
-  // Perbaiki fungsi exportToExcel
 
   const exportToExcel = async () => {
     try {
@@ -190,7 +204,7 @@ export default function ScrapPage() {
         item.Pemasukan || 0,
         item.Penggunaan || 0,
         item.Pengeluaran || 0,
-        item.Penyesuaian || 0,
+        item.Penyesuaian || "0",
         item.SaldoAkhir || 0,
         item.Pencacahan || 0,
         item.selisih || 0,
@@ -211,7 +225,7 @@ export default function ScrapPage() {
         0,
       );
       const totalPenyesuaian = data.reduce(
-        (sum, item) => sum + (item.Penyesuaian || 0),
+        (sum, item) => sum + parsePenyesuaian(item.Penyesuaian),
         0,
       );
       const totalSaldoAkhir = data.reduce(
@@ -296,7 +310,7 @@ export default function ScrapPage() {
         { wch: 12 }, // Pengeluaran
         { wch: 12 }, // Penyesuaian
         { wch: 15 }, // Saldo Akhir
-        { wch: 12 }, // Stok Opname
+        { wch: 15 }, // Hasil Pencacahan
         { wch: 12 }, // Selisih
         { wch: 30 }, // Keterangan
       ];
@@ -313,10 +327,10 @@ export default function ScrapPage() {
       ];
 
       // Tambahkan worksheet ke workbook
-      XLSX.utils.book_append_sheet(wb, ws, "Bahan Baku");
+      XLSX.utils.book_append_sheet(wb, ws, "Scrap");
 
       // Download file
-      const fileName = `laporan_bahan_baku_${tgl1}_${tgl2}.xlsx`;
+      const fileName = `LAPORAN_SCRAP_${tgl1}_${tgl2}.xlsx`;
       XLSX.writeFile(wb, fileName);
 
       // Kirim notifikasi ke Telegram
@@ -338,6 +352,7 @@ export default function ScrapPage() {
       alert("Gagal mengexport data");
     }
   };
+
   // Hitung total untuk summary
   const totalSaldoAwal = data.reduce(
     (sum, item) => sum + (item.saldoawal || 0),
@@ -356,7 +371,8 @@ export default function ScrapPage() {
     0,
   );
   const totalSelisih = data.reduce((sum, item) => sum + (item.selisih || 0), 0);
-if (userLoading) {
+
+  if (userLoading) {
     return (
       <div className="container mx-auto px-4 py-8">
         <div className="flex items-center justify-center h-64">
@@ -365,6 +381,7 @@ if (userLoading) {
       </div>
     );
   }
+
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="flex flex-col gap-6">

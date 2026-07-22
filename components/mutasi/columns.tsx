@@ -184,10 +184,31 @@ export const columns: ColumnDef<MutasiType>[] = [
       );
     },
     cell: ({ row }) => {
-      const value = row.getValue("Penyesuaian") as number;
+      const value = row.getValue("Penyesuaian") as string;
+      
+      // Jika tidak ada nilai atau "0", tampilkan "-"
+      if (!value || value === "0" || value === "0") {
+        return <div className="text-right font-mono">-</div>;
+      }
+      
+      // Cek apakah nilai dimulai dengan + atau -
+      const isPositive = value.startsWith("+");
+      const isNegative = value.startsWith("-");
+      const numValue = parseFloat(value);
+      
+      // Jika tidak ada tanda + atau -, berarti angka biasa
+      if (!isPositive && !isNegative) {
+        return (
+          <div className="text-right font-mono text-blue-600">
+            {numValue.toLocaleString("id-ID")}
+          </div>
+        );
+      }
+      
+      // Tampilkan dengan warna sesuai tanda
       return (
-        <div className="text-right font-mono text-blue-600">
-          {formatNumber(value)}
+        <div className={`text-right font-mono ${isPositive ? "text-green-600" : "text-red-600"}`}>
+          {value}
         </div>
       );
     },
