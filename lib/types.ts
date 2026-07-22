@@ -71,15 +71,6 @@ export interface MutasiType {
   selisih: number;
   Keterangan: string;
   Pencacahan: number;
-  saldoawal:number;
-  Pemasukan:number;
-  Pengeluaran:number;
-  Penyesuaian:string;
-  SaldoAkhir:number;
-  stokopname:number;
-  selisih:number;
-  Keterangan:string;
-  Pencacahan:number;
   Penggunaan: number;
 }
 export type ProduksiType = {

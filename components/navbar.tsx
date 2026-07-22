@@ -113,11 +113,11 @@ export default function Navbar({
     //   href: "/tracking-pemasukan-produksi",
     //   icon: Eye, // Atau Truck, atau ClipboardCheck
     // },
-    {
-      title: "Bahan → Jadi",
-      href: "/tracking-bahan-ke-jadi",
-      icon: Factory, // atau icon lain
-    },
+  //  {
+//      title: "Bahan → Jadi",
+//      href: "/tracking-bahan-ke-jadi",
+ //     icon: Factory, // atau icon lain
+  //  },
   ];
 
   // Submenu items untuk Mutasi
