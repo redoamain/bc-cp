@@ -2,7 +2,7 @@
 // app/mutasi/wip/page.tsx
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useCallback, useState } from "react";
 import * as XLSX from "xlsx";
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
@@ -19,6 +19,9 @@ import {
   Package,
   TrendingUp,
   TrendingDown,
+  Search,
+  AlertCircle,
+  Calendar,
 } from "lucide-react";
 import { getWIP } from "@/lib/services/mutasiService";
 import { useUser } from "../../../contexts/UserContext";
@@ -30,18 +33,6 @@ const formatDate = (date: Date | string) => {
 const formatNumber = (value: number) => {
   if (!value && value !== 0) return "-";
   return value.toLocaleString("id-ID");
-};
-
-// Helper function untuk parsing Penyesuaian (string dengan tanda + atau -)
-const parsePenyesuaian = (value: string | number | null | undefined): number => {
-  if (value === null || value === undefined) return 0;
-  if (typeof value === 'number') return value;
-  if (typeof value === 'string') {
-    const cleaned = value.replace(/[+]/g, '');
-    const parsed = parseFloat(cleaned);
-    return isNaN(parsed) ? 0 : parsed;
-  }
-  return 0;
 };
 
 // Fungsi untuk mengirim notifikasi ke Telegram
@@ -91,7 +82,9 @@ export default function WipPage() {
   );
 
   const [data, setData] = useState<MutasiType[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [isFirstLoad, setIsFirstLoad] = useState(true);
+  const [hasData, setHasData] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [tgl1, setTgl1] = useState(defaultTgl1);
   const [tgl2, setTgl2] = useState(defaultTgl2);
@@ -99,7 +92,7 @@ export default function WipPage() {
   // Menggunakan UserContext
   const { user, isLoading: userLoading } = useUser();
 
-  // Mendapatkan informasi user dengan berbagai kemungkinan field name
+  // Mendapatkan informasi user
   const getUserInfo = useCallback(() => {
     if (!user) return { name: "Unknown", bagian: "Unknown" };
 
@@ -115,6 +108,8 @@ export default function WipPage() {
   const fetchData = useCallback(async (tglAwal: string, tglAkhir: string) => {
     setLoading(true);
     setError(null);
+    setIsFirstLoad(false);
+    setHasData(false);
 
     try {
       const response = await getWIP(tglAwal, tglAkhir);
@@ -122,21 +117,20 @@ export default function WipPage() {
         setData(response.data);
         setTgl1(tglAwal);
         setTgl2(tglAkhir);
+        setHasData(true);
       } else {
         setError(response.error || "Gagal mengambil data");
         setData([]);
+        setHasData(false);
       }
     } catch (err) {
       setError("Terjadi kesalahan saat mengambil data");
       setData([]);
+      setHasData(false);
     } finally {
       setLoading(false);
     }
   }, []);
-
-  useEffect(() => {
-    fetchData(defaultTgl1, defaultTgl2);
-  }, [fetchData, defaultTgl1, defaultTgl2]);
 
   const handleFilter = (tglAwal: string, tglAkhir: string) => {
     fetchData(tglAwal, tglAkhir);
@@ -181,14 +175,8 @@ export default function WipPage() {
 
       const totalRows = [
         [],
-        [
-          "TOTAL",
-          "",
-          "",
-          "",
-          totalSaldoAkhir.toLocaleString("id-ID"),
-          "",
-        ],
+        ["TOTAL", "", "", "", totalSaldoAkhir.toLocaleString("id-ID"), ""],
+        [`Total Item: ${data.length} item`, "", "", "", "", ""],
         [],
         ["*** AKHIR LAPORAN ***"],
       ];
@@ -213,8 +201,8 @@ export default function WipPage() {
       ws["!merges"].push({ s: { r: 2, c: 0 }, e: { r: 2, c: 4 } });
       ws["!merges"].push({ s: { r: 3, c: 0 }, e: { r: 3, c: 4 } });
       ws["!merges"].push({
-        s: { r: wsData.length - 2, c: 0 },
-        e: { r: wsData.length - 2, c: 3 },
+        s: { r: wsData.length - 3, c: 0 },
+        e: { r: wsData.length - 3, c: 3 },
       });
       ws["!merges"].push({
         s: { r: wsData.length - 1, c: 0 },
@@ -242,7 +230,7 @@ export default function WipPage() {
 
       XLSX.utils.book_append_sheet(wb, ws, "WIP");
 
-      const fileName = `LAPORAN_POSISI_BARANG_WIP_${tgl1}_${tgl2}.xlsx`;
+      const fileName = `LAPORAN_WIP_${format(new Date(tgl1), "yyyyMMdd")}_${format(new Date(tgl2), "yyyyMMdd")}.xlsx`;
       XLSX.writeFile(wb, fileName);
 
       await sendTelegramNotification({
@@ -260,11 +248,13 @@ export default function WipPage() {
     }
   };
 
+  // Hitung total untuk summary
   const totalSaldoAkhir = data.reduce(
     (sum, item) => sum + (item.SaldoAkhir || 0),
     0,
   );
 
+  // Loading state untuk user
   if (userLoading) {
     return (
       <div className="container mx-auto px-4 py-8">
@@ -278,19 +268,27 @@ export default function WipPage() {
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="flex flex-col gap-6">
+        {/* Header */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
             <h1 className="text-3xl font-bold">Laporan Posisi Barang WIP</h1>
             <p className="text-muted-foreground">
-              Laporan posisi barang WIP periode {formatDate(tgl1)} -{" "}
-              {formatDate(tgl2)}
+              {isFirstLoad
+                ? "Pilih periode dan klik tampilkan untuk melihat data"
+                : hasData && data.length > 0
+                  ? `Laporan posisi barang WIP periode ${formatDate(tgl1)} - ${formatDate(tgl2)}`
+                  : "Pilih periode dan klik tampilkan untuk melihat data"}
             </p>
           </div>
           <div className="flex gap-2">
             <Button
               variant="outline"
-              onClick={() => fetchData(tgl1, tgl2)}
-              disabled={loading}
+              onClick={() => {
+                if (!isFirstLoad && hasData) {
+                  fetchData(tgl1, tgl2);
+                }
+              }}
+              disabled={loading || isFirstLoad || !hasData}
             >
               <RefreshCw
                 className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`}
@@ -300,7 +298,7 @@ export default function WipPage() {
             <Button
               variant="outline"
               onClick={exportToExcel}
-              disabled={data.length === 0 || loading}
+              disabled={data.length === 0 || loading || isFirstLoad || !hasData}
             >
               <Download className="h-4 w-4 mr-2" />
               Export Excel
@@ -308,6 +306,7 @@ export default function WipPage() {
           </div>
         </div>
 
+        {/* Filter Tanggal */}
         <FilterTanggal
           onFilter={handleFilter}
           isLoading={loading}
@@ -315,61 +314,128 @@ export default function WipPage() {
           defaultTgl2={tgl2}
         />
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Loading */}
+        {loading ? (
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Total Item
-              </CardTitle>
-              <Package className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <p className="text-2xl font-bold">{data.length}</p>
-              <p className="text-xs text-muted-foreground mt-1">
-                Jumlah Barang WIP
+            <CardContent className="flex flex-col items-center justify-center py-16">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mb-4"></div>
+              <h3 className="text-lg font-semibold text-muted-foreground">
+                Memuat Data...
+              </h3>
+              <p className="text-muted-foreground text-sm">
+                Mohon tunggu sebentar
               </p>
             </CardContent>
           </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Jumlah Barang
-              </CardTitle>
-              <TrendingDown className="h-4 w-4 text-purple-500" />
-            </CardHeader>
-            <CardContent>
-              <p className="text-2xl font-bold text-purple-600">
-                {formatNumber(totalSaldoAkhir)}
-              </p>
-              <p className="text-xs text-muted-foreground mt-1">
-                Total jumlah barang WIP (Saldo Akhir)
+        ) : isFirstLoad ? (
+          /* First Load */
+          <Card className="border-2 border-dashed border-muted-foreground/30">
+            <CardContent className="flex flex-col items-center justify-center py-16">
+              <Search className="h-16 w-16 text-muted-foreground/50 mb-4" />
+              <h3 className="text-xl font-semibold text-muted-foreground mb-2">
+                Belum Ada Data
+              </h3>
+              <p className="text-muted-foreground text-center max-w-md">
+                Silakan pilih periode tanggal di atas dan klik tombol
+                <span className="font-medium text-primary mx-1">
+                  "Tampilkan"
+                </span>
+                untuk melihat laporan posisi barang WIP.
               </p>
             </CardContent>
           </Card>
-        </div>
+        ) : hasData && data.length > 0 ? (
+          /* Ada Data */
+          <>
+            {/* Summary Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">
+                    Total Item
+                  </CardTitle>
+                  <Package className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <p className="text-2xl font-bold">{data.length}</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Jumlah Barang WIP
+                  </p>
+                </CardContent>
+              </Card>
 
-        {error && (
-          <Alert variant="destructive">
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
-        )}
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">
+                    Total Jumlah Barang
+                  </CardTitle>
+                  <TrendingDown className="h-4 w-4 text-purple-500" />
+                </CardHeader>
+                <CardContent>
+                  <p className="text-2xl font-bold text-purple-600">
+                    {formatNumber(totalSaldoAkhir)}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Total quantity WIP (Saldo Akhir)
+                  </p>
+                </CardContent>
+              </Card>
 
-        <Card>
-          <CardContent className="p-6">
-            {loading ? (
-              <div className="flex items-center justify-center h-64">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-              </div>
-            ) : (
-              <DataTableMutasi
-                columns={columns}
-                data={data}
-                searchKey="NamaBarang"
-                searchPlaceholder="Cari nama barang..."
-              />
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">
+                    Periode
+                  </CardTitle>
+                  <Calendar className="h-4 w-4 text-blue-500" />
+                </CardHeader>
+                <CardContent>
+                  <p className="text-base font-bold text-blue-600">
+                    {formatDate(tgl1)} - {formatDate(tgl2)}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Rentang tanggal laporan
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Error Alert */}
+            {error && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
             )}
-          </CardContent>
-        </Card>
+
+            {/* DataTable */}
+            <Card>
+              <CardContent className="p-6">
+                <DataTableMutasi
+                  columns={columns}
+                  data={data}
+                  searchKey="NamaBarang"
+                  searchPlaceholder="Cari nama barang..."
+                />
+              </CardContent>
+            </Card>
+          </>
+        ) : (
+          /* Data Kosong */
+          <Card className="border-2 border-dashed border-muted-foreground/30">
+            <CardContent className="flex flex-col items-center justify-center py-12">
+              <Package className="h-12 w-12 text-muted-foreground/50 mb-3" />
+              <h3 className="text-lg font-semibold text-muted-foreground mb-1">
+                Tidak Ada Data
+              </h3>
+              <p className="text-muted-foreground text-center">
+                Tidak ditemukan data untuk periode yang dipilih.
+              </p>
+              <p className="text-muted-foreground text-sm mt-1">
+                Coba pilih rentang tanggal yang berbeda.
+              </p>
+            </CardContent>
+          </Card>
+        )}
       </div>
     </div>
   );

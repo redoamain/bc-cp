@@ -1,104 +1,57 @@
-// app/mutasi/bahan-baku/columns.tsx
-"use client";
-
+// components/wip/columns.tsx
 import { ColumnDef } from "@tanstack/react-table";
 import { MutasiType } from "@/lib/types";
-import { Button } from "@/components/ui/button";
+import { Button } from "../ui/button";
 import { ArrowUpDown } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-
-
-const formatNumber = (value: number) => {
-  if (!value && value !== 0) return "-";
-  return value.toLocaleString("id-ID");
-};
+import { InfoTooltip } from "../ui/info-tooltip";
 
 export const columns: ColumnDef<MutasiType>[] = [
   {
-    id: "no",
-    header: "No.",
-    cell: ({ row }) => {
-      return <div className="text-center w-8">{row.index + 1}</div>;
+    accessorKey: "No",
+    header: ({ column }) => {
+      return (
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+          className="p-0 h-auto font-medium hover:bg-transparent"
+        >
+          <div className="flex items-center gap-2">
+            <span>No.</span>
+            <ArrowUpDown className="h-3 w-3" />
+        
+          </div>
+        </Button>
+      );
     },
-    size: 50,
+    cell: ({ row }) => {
+      return (
+        <span className="text-muted-foreground text-sm">{row.index + 1}</span>
+      );
+    },
   },
   {
     accessorKey: "KodeBarang",
-    header: ({ column }) => {
-      return (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-          className="font-semibold"
-        >
-          Kode Barang
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
-      );
-    },
-    cell: ({ row }) => {
-      const value = row.getValue("KodeBarang") as string;
-      return (
-        <Badge variant="outline" className="bg-gray-50 font-mono">
-          {value || "-"}
-        </Badge>
-      );
-    },
-    size: 150,
+    header: "Kode Barang",
   },
   {
     accessorKey: "NamaBarang",
-    header: ({ column }) => {
-      return (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-          className="font-semibold"
-        >
-          Nama Barang
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
-      );
-    },
-    cell: ({ row }) => {
-      const value = row.getValue("NamaBarang") as string;
-      return (
-        <div className="max-w-75 truncate" title={value}>
-          {value || "-"}
-        </div>
-      );
-    },
-    size: 300,
+    header: "Nama Barang",
   },
   {
     accessorKey: "Satuan",
     header: "Satuan",
-    cell: ({ row }) => row.getValue("Satuan") || "-",
-    size: 80,
   },
   {
     accessorKey: "SaldoAkhir",
-    header: ({ column }) => {
-      return (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-          className="font-semibold text-right"
-        >
-          Jumlah
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
-      );
-    },
+    header: "Jumlah Barang",
     cell: ({ row }) => {
       const value = row.getValue("SaldoAkhir") as number;
       return (
-        <div className="text-right font-mono font-bold">
-          {formatNumber(value)}
-        </div>
+        <span className="font-medium">
+          {value?.toLocaleString("id-ID") || 0}
+        </span>
       );
     },
-    size: 120,
   },
   {
     accessorKey: "Keterangan",
@@ -106,11 +59,8 @@ export const columns: ColumnDef<MutasiType>[] = [
     cell: ({ row }) => {
       const value = row.getValue("Keterangan") as string;
       return (
-        <div className="max-w-50 truncate" title={value}>
-          {value || "-"}
-        </div>
+        <span className="text-sm text-muted-foreground">{value || "-"}</span>
       );
     },
-    size: 200,
   },
 ];

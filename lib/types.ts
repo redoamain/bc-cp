@@ -72,6 +72,7 @@ export interface MutasiType {
   Keterangan: string;
   Pencacahan: number;
   Penggunaan: number;
+  Retur: number;
 }
 export type ProduksiType = {
   type: string;

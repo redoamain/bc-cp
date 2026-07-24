@@ -113,11 +113,7 @@ export default function Navbar({
     //   href: "/tracking-pemasukan-produksi",
     //   icon: Eye, // Atau Truck, atau ClipboardCheck
     // },
-  //  {
-//      title: "Bahan → Jadi",
-//      href: "/tracking-bahan-ke-jadi",
- //     icon: Factory, // atau icon lain
-  //  },
+ 
   ];
 
   // Submenu items untuk Mutasi
@@ -151,6 +147,13 @@ export default function Navbar({
       href: "/wip",
       icon: Grid2X2,
       description: "Laporan Posisi barang dalam proses",
+    },
+    {
+      title: "Tracking Bahan → Jadi",
+      href: "/tracking-bahan-ke-jadi",
+      icon: Factory,
+      description:
+        "Lacak proses perubahan bahan baku menjadi produk jadi secara menyeluruh.",
     },
   ];
 

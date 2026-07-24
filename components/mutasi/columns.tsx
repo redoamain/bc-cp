@@ -1,26 +1,69 @@
-// app/mutasi/bahan-baku/columns.tsx
-"use client";
-
+// components/mutasi/columns.tsx
 import { ColumnDef } from "@tanstack/react-table";
 import { MutasiType } from "@/lib/types";
-import { Button } from "@/components/ui/button";
+import { InfoTooltip } from "@/components/ui/info-tooltip";
 import { ArrowUpDown } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
 
-const formatNumber = (value: number) => {
-  if (!value && value !== 0) return "-";
-  return value.toLocaleString("id-ID");
+// Definisi deskripsi untuk setiap kolom
+const columnDescriptions = {
+  No: "Nomor urut data",
+  KodeBarang: "Kode unik identifikasi bahan baku",
+  NamaBarang: "Nama lengkap bahan baku",
+  Satuan: "Satuan ukuran bahan baku (Kg, Pcs, Liter, dll)",
+  saldoawal: "Jumlah stok awal periode",
+  Pemasukan: "Total barang masuk (Pembelian)",
+  Retur: "Barang yang dikembalikan dari proses produksi",
+  Penggunaan: "Jumlah barang yang digunakan",
+  Pengeluaran: "Total barang keluar (Penjualan )",
+  Penyesuaian: "Penyesuaian stok karena selisih fisik (dapat bernilai +/-)",
+  SaldoAkhir:
+    "Stok akhir berdasarkan perhitungan (Saldo Awal + Pemasukan + Pengembalian - Pengeluaran - Penggunaan)",
+  Pencacahan: "Hasil stok fisik/opname aktual di lapangan",
+  selisih: "Selisih antara Saldo Akhir dengan Hasil Pencacahan",
+  Keterangan: "Catatan tambahan",
+};
+
+// Helper untuk header dengan tooltip
+const ColumnHeader = ({
+  title,
+  description,
+}: {
+  title: string;
+  description: string;
+}) => {
+  return (
+    <div className="flex items-center gap-2">
+      <span>{title}</span>
+      <InfoTooltip description={description} />
+    </div>
+  );
 };
 
 export const columns: ColumnDef<MutasiType>[] = [
   {
-    id: "no",
-    header: "No.",
-    cell: ({ row }) => {
-      return <div className="text-center w-8">{row.index + 1}</div>;
+    accessorKey: "No",
+    header: ({ column }) => {
+      return (
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+          className="p-0 h-auto font-medium hover:bg-transparent"
+        >
+          <div className="flex items-center gap-2">
+            <span>No.</span>
+            <ArrowUpDown className="h-3 w-3" />
+            <InfoTooltip description={columnDescriptions.No} />
+          </div>
+        </Button>
+      );
     },
-    size: 50,
+    cell: ({ row }) => {
+      return (
+        <span className="text-muted-foreground text-sm">{row.index + 1}</span>
+      );
+    },
   },
   {
     accessorKey: "KodeBarang",
@@ -29,22 +72,16 @@ export const columns: ColumnDef<MutasiType>[] = [
         <Button
           variant="ghost"
           onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-          className="font-semibold"
+          className="p-0 h-auto font-medium hover:bg-transparent"
         >
-          Kode Barang
-          <ArrowUpDown className="ml-2 h-4 w-4" />
+          <div className="flex items-center gap-2">
+            <span>Kode Barang</span>
+            <ArrowUpDown className="h-3 w-3" />
+            <InfoTooltip description={columnDescriptions.KodeBarang} />
+          </div>
         </Button>
       );
     },
-    cell: ({ row }) => {
-      const value = row.getValue("KodeBarang") as string;
-      return (
-        <Badge variant="outline" className="bg-gray-50 font-mono">
-          {value || "-"}
-        </Badge>
-      );
-    },
-    size: 150,
   },
   {
     accessorKey: "NamaBarang",
@@ -53,252 +90,219 @@ export const columns: ColumnDef<MutasiType>[] = [
         <Button
           variant="ghost"
           onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-          className="font-semibold"
+          className="p-0 h-auto font-medium hover:bg-transparent"
         >
-          Nama Barang
-          <ArrowUpDown className="ml-2 h-4 w-4" />
+          <div className="flex items-center gap-2">
+            <span>Nama Barang</span>
+            <ArrowUpDown className="h-3 w-3" />
+            <InfoTooltip description={columnDescriptions.NamaBarang} />
+          </div>
         </Button>
       );
     },
-    cell: ({ row }) => {
-      const value = row.getValue("NamaBarang") as string;
-      return (
-        <div className="max-w-75 truncate" title={value}>
-          {value || "-"}
-        </div>
-      );
-    },
-    size: 300,
   },
   {
     accessorKey: "Satuan",
-    header: "Satuan",
-    cell: ({ row }) => row.getValue("Satuan") || "-",
-    size: 80,
+    header: () => (
+      <div className="flex items-center gap-2">
+        <span>Satuan</span>
+        <InfoTooltip description={columnDescriptions.Satuan} />
+      </div>
+    ),
   },
   {
     accessorKey: "saldoawal",
-    header: ({ column }) => {
-      return (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-          className="font-semibold text-right"
-        >
-          Saldo Awal
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
-      );
-    },
+    header: () => (
+      <div className="flex items-center gap-2">
+        <span>Saldo Awal</span>
+        <InfoTooltip description={columnDescriptions.saldoawal} />
+      </div>
+    ),
     cell: ({ row }) => {
       const value = row.getValue("saldoawal") as number;
-      return <div className="text-right font-mono">{formatNumber(value)}</div>;
+      return (
+        <span className="font-medium text-blue-600">
+          {value?.toLocaleString("id-ID") || 0}
+        </span>
+      );
     },
-    size: 120,
   },
   {
     accessorKey: "Pemasukan",
-    header: ({ column }) => {
-      return (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-          className="font-semibold text-right"
-        >
-          Pemasukan
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
-      );
-    },
+    header: () => (
+      <div className="flex items-center gap-2">
+        <span>Pemasukan</span>
+        <InfoTooltip description={columnDescriptions.Pemasukan} />
+      </div>
+    ),
     cell: ({ row }) => {
       const value = row.getValue("Pemasukan") as number;
       return (
-        <div className="text-right font-mono text-green-600">
-          {formatNumber(value)}
-        </div>
+        <span className="font-medium text-green-600">
+          {value?.toLocaleString("id-ID") || 0}
+        </span>
       );
     },
-    size: 120,
   },
-
+  {
+    accessorKey: "Retur",
+    header: () => (
+      <div className="flex items-center gap-2">
+        <span>Pengembalian Produksi</span>
+        <InfoTooltip description={columnDescriptions.Retur} />
+      </div>
+    ),
+    cell: ({ row }) => {
+      const value = row.getValue("Retur") as number;
+      return (
+        <span className="text-green-600">
+          {value?.toLocaleString("id-ID") || 0}
+        </span>
+      );
+    },
+  },
   {
     accessorKey: "Penggunaan",
-    header: ({ column }) => {
-      return (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-          className="font-semibold text-right"
-        >
-          Penggunaan
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
-      );
-    },
+    header: () => (
+      <div className="flex items-center gap-2">
+        <span>Penggunaan</span>
+        <InfoTooltip description={columnDescriptions.Penggunaan} />
+      </div>
+    ),
     cell: ({ row }) => {
       const value = row.getValue("Penggunaan") as number;
       return (
-        <div className="text-right font-mono text-red-600">
-          {formatNumber(value)}
-        </div>
+        <span className="text-orange-600">
+          {value?.toLocaleString("id-ID") || 0}
+        </span>
       );
     },
-    size: 120,
   },
   {
     accessorKey: "Pengeluaran",
-    header: ({ column }) => {
-      return (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-          className="font-semibold text-right"
-        >
-          Pengeluaran
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
-      );
-    },
+    header: () => (
+      <div className="flex items-center gap-2">
+        <span>Pengeluaran</span>
+        <InfoTooltip description={columnDescriptions.Pengeluaran} />
+      </div>
+    ),
     cell: ({ row }) => {
       const value = row.getValue("Pengeluaran") as number;
       return (
-        <div className="text-right font-mono text-red-600">
-          {formatNumber(value)}
-        </div>
+        <span className="font-medium text-red-600">
+          {value?.toLocaleString("id-ID") || 0}
+        </span>
       );
     },
-    size: 120,
   },
   {
     accessorKey: "Penyesuaian",
-    header: ({ column }) => {
-      return (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-          className="font-semibold text-right"
-        >
-          Penyesuaian
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
-      );
-    },
+    header: () => (
+      <div className="flex items-center gap-2">
+        <span>Penyesuaian</span>
+        <InfoTooltip description={columnDescriptions.Penyesuaian} />
+      </div>
+    ),
     cell: ({ row }) => {
-      const value = row.getValue("Penyesuaian") as string;
-      
-      // Jika tidak ada nilai atau "0", tampilkan "-"
-      if (!value || value === "0" || value === "0") {
-        return <div className="text-right font-mono">-</div>;
+      const value = row.getValue("Penyesuaian") as string | number;
+      if (!value) return <span>-</span>;
+      const numValue = typeof value === "string" ? parseFloat(value) : value;
+      if (isNaN(numValue)) return <span>-</span>;
+
+      const isPositive = numValue > 0;
+      const isNegative = numValue < 0;
+
+      let bgColor = "bg-gray-100";
+      let textColor = "text-gray-600";
+
+      if (isPositive) {
+        bgColor = "bg-green-100";
+        textColor = "text-green-700";
+      } else if (isNegative) {
+        bgColor = "bg-red-100";
+        textColor = "text-red-700";
       }
-      
-      // Cek apakah nilai dimulai dengan + atau -
-      const isPositive = value.startsWith("+");
-      const isNegative = value.startsWith("-");
-      const numValue = parseFloat(value);
-      
-      // Jika tidak ada tanda + atau -, berarti angka biasa
-      if (!isPositive && !isNegative) {
-        return (
-          <div className="text-right font-mono text-blue-600">
-            {numValue.toLocaleString("id-ID")}
-          </div>
-        );
-      }
-      
-      // Tampilkan dengan warna sesuai tanda
+
       return (
-        <div className={`text-right font-mono ${isPositive ? "text-green-600" : "text-red-600"}`}>
-          {value}
-        </div>
+        <Badge className={`${bgColor} ${textColor} px-2 py-1`}>
+          {numValue > 0 ? "+" : ""}
+          {numValue.toLocaleString("id-ID")}
+        </Badge>
       );
     },
-    size: 120,
   },
   {
     accessorKey: "SaldoAkhir",
-    header: ({ column }) => {
-      return (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-          className="font-semibold text-right"
-        >
-          Saldo Akhir
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
-      );
-    },
+    header: () => (
+      <div className="flex items-center gap-2">
+        <span>Saldo Akhir</span>
+        <InfoTooltip description={columnDescriptions.SaldoAkhir} />
+      </div>
+    ),
     cell: ({ row }) => {
       const value = row.getValue("SaldoAkhir") as number;
       return (
-        <div className="text-right font-mono font-bold">
-          {formatNumber(value)}
-        </div>
+        <span className="font-bold text-purple-600">
+          {value?.toLocaleString("id-ID") || 0}
+        </span>
       );
     },
-    size: 120,
   },
   {
     accessorKey: "Pencacahan",
-    header: ({ column }) => {
-      return (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-          className="font-semibold text-right"
-        >
-          Hasil Pencacahan
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
-      );
-    },
+    header: () => (
+      <div className="flex items-center gap-2">
+        <span>Hasil Pencacahan</span>
+        <InfoTooltip description={columnDescriptions.Pencacahan} />
+      </div>
+    ),
     cell: ({ row }) => {
       const value = row.getValue("Pencacahan") as number;
-      return <div className="text-right font-mono">{formatNumber(value)}</div>;
+      return (
+        <span className="font-medium text-indigo-600">
+          {value?.toLocaleString("id-ID") || 0}
+        </span>
+      );
     },
-    size: 120,
   },
   {
     accessorKey: "selisih",
-    header: ({ column }) => {
-      return (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-          className="font-semibold text-right"
-        >
-          Selisih
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
-      );
-    },
+    header: () => (
+      <div className="flex items-center gap-2">
+        <span>Selisih</span>
+        <InfoTooltip description={columnDescriptions.selisih} />
+      </div>
+    ),
     cell: ({ row }) => {
       const value = row.getValue("selisih") as number;
+      if (!value || value === 0) {
+        return <span className="text-green-600 font-medium">-</span>;
+      }
+
+      const isPositive = value > 0;
       return (
-        <div
-          className={cn(
-            "text-right font-mono",
-            value > 0 && "text-green-600",
-            value < 0 && "text-red-600",
-          )}
+        <span
+          className={`font-bold ${isPositive ? "text-red-600" : "text-blue-600"}`}
         >
-          {formatNumber(value)}
-        </div>
+          {isPositive ? "+" : ""}
+          {value.toLocaleString("id-ID")}
+        </span>
       );
     },
-    size: 100,
   },
   {
     accessorKey: "Keterangan",
-    header: "Keterangan",
+    header: () => (
+      <div className="flex items-center gap-2">
+        <span>Keterangan</span>
+        <InfoTooltip description={columnDescriptions.Keterangan} />
+      </div>
+    ),
     cell: ({ row }) => {
       const value = row.getValue("Keterangan") as string;
       return (
-        <div className="max-w-50 truncate" title={value}>
-          {value || "-"}
-        </div>
+        <span className="text-sm text-muted-foreground">{value || "-"}</span>
       );
     },
-    size: 200,
   },
 ];

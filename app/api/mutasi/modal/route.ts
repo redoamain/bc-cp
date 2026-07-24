@@ -37,7 +37,7 @@ export async function GET(request: NextRequest) {
       saldoawal: item.saldoawal ? Number(item.saldoawal) : 0,
       Pemasukan: item.Pemasukan ? Number(item.Pemasukan) : 0,
       Pengeluaran: item.Pengeluaran ? Number(item.Pengeluaran) : 0,
-       // Penyesuaian tetap sebagai string (bisa berupa "+200" atau "-200")
+      // Penyesuaian tetap sebagai string (bisa berupa "+200" atau "-200")
       Penyesuaian: item.Penyesuaian || "0",
       SaldoAkhir: item.SaldoAkhir ? Number(item.SaldoAkhir) : 0,
       stokopname: item.stokopname ? Number(item.stokopname) : 0,
@@ -45,6 +45,7 @@ export async function GET(request: NextRequest) {
       Keterangan: item.Keterangan || "",
       Pencacahan: item.Pencacahan ? Number(item.Pencacahan) : 0,
       Penggunaan: item.Penggunaan ? Number(item.Penggunaan) : 0,
+      Retur: item.Retur ? Number(item.Retur) : 0,
     }));
     return NextResponse.json({
       success: true,

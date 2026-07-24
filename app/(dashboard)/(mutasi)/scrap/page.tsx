@@ -21,9 +21,10 @@ import {
   MinusCircle,
   PlusCircle,
   AlertCircle,
+  Search,
 } from "lucide-react";
 import { getScrap } from "@/lib/services/mutasiService";
-import { useUser } from "../../../contexts/UserContext"; 
+import { useUser } from "../../../contexts/UserContext";
 
 const formatDate = (date: Date | string) => {
   return format(new Date(date), "dd MMM yyyy", { locale: id });
@@ -35,12 +36,14 @@ const formatNumber = (value: number) => {
 };
 
 // Helper function untuk parsing Penyesuaian (string dengan tanda + atau -)
-const parsePenyesuaian = (value: string | number | null | undefined): number => {
+const parsePenyesuaian = (
+  value: string | number | null | undefined,
+): number => {
   if (value === null || value === undefined) return 0;
-  if (typeof value === 'number') return value;
-  if (typeof value === 'string') {
+  if (typeof value === "number") return value;
+  if (typeof value === "string") {
     // Hilangkan tanda + atau - dan parse ke number
-    const cleaned = value.replace(/[+]/g, '');
+    const cleaned = value.replace(/[+]/g, "");
     const parsed = parseFloat(cleaned);
     return isNaN(parsed) ? 0 : parsed;
   }
@@ -109,11 +112,13 @@ export default function ScrapPage() {
   );
 
   const [data, setData] = useState<MutasiType[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [isFirstLoad, setIsFirstLoad] = useState(true);
+  const [hasData, setHasData] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [tgl1, setTgl1] = useState(defaultTgl1);
   const [tgl2, setTgl2] = useState(defaultTgl2);
-  
+
   // Menggunakan UserContext
   const { user, isLoading: userLoading } = useUser();
 
@@ -134,6 +139,8 @@ export default function ScrapPage() {
   const fetchData = useCallback(async (tglAwal: string, tglAkhir: string) => {
     setLoading(true);
     setError(null);
+    setIsFirstLoad(false);
+    setHasData(false);
 
     try {
       const response = await getScrap(tglAwal, tglAkhir);
@@ -141,21 +148,25 @@ export default function ScrapPage() {
         setData(response.data);
         setTgl1(tglAwal);
         setTgl2(tglAkhir);
+        setHasData(true);
       } else {
         setError(response.error || "Gagal mengambil data");
         setData([]);
+        setHasData(false);
       }
     } catch (err) {
       setError("Terjadi kesalahan saat mengambil data");
       setData([]);
+      setHasData(false);
     } finally {
       setLoading(false);
     }
   }, []);
 
-  useEffect(() => {
-    fetchData(defaultTgl1, defaultTgl2);
-  }, [fetchData]);
+  // Hapus useEffect agar tidak auto-fetch
+  // useEffect(() => {
+  //   fetchData(defaultTgl1, defaultTgl2);
+  // }, [fetchData]);
 
   const handleFilter = (tglAwal: string, tglAkhir: string) => {
     fetchData(tglAwal, tglAkhir);
@@ -168,16 +179,14 @@ export default function ScrapPage() {
         return;
       }
 
-      // Buat workbook baru
       const wb = XLSX.utils.book_new();
 
-      // Data untuk header laporan
-      const reportTitle = "LAPORAN MUTASI BARANG SCRAP";
+      const reportTitle = "LAPORAN MUTASI SCRAP";
       const periode = `Periode: ${format(new Date(tgl1), "dd MMMM yyyy")} - ${format(new Date(tgl2), "dd MMMM yyyy")}`;
       const tanggalCetak = `Tanggal Cetak: ${format(new Date(), "dd MMMM yyyy HH:mm:ss")}`;
       const totalData = `Total Data: ${data.length} item`;
 
-      // Header kolom
+      // HEADER KOLOM - SESUAIKAN DENGAN DATA
       const columnHeaders = [
         "No.",
         "Kode Barang",
@@ -185,6 +194,7 @@ export default function ScrapPage() {
         "Satuan",
         "Saldo Awal",
         "Pemasukan",
+        "Pengembalian Produksi",
         "Penggunaan",
         "Pengeluaran",
         "Penyesuaian",
@@ -194,7 +204,7 @@ export default function ScrapPage() {
         "Keterangan",
       ];
 
-      // Data rows
+      // DATA ROWS - SESUAIKAN URUTAN
       const dataRows = data.map((item, index) => [
         index + 1,
         item.KodeBarang || "-",
@@ -202,6 +212,7 @@ export default function ScrapPage() {
         item.Satuan || "-",
         item.saldoawal || 0,
         item.Pemasukan || 0,
+        item.Retur || 0,
         item.Penggunaan || 0,
         item.Pengeluaran || 0,
         item.Penyesuaian || "0",
@@ -211,13 +222,18 @@ export default function ScrapPage() {
         item.Keterangan || "-",
       ]);
 
-      // Hitung total untuk footer
+      // HITUNG TOTAL DENGAN BENAR
       const totalSaldoAwal = data.reduce(
         (sum, item) => sum + (item.saldoawal || 0),
         0,
       );
       const totalPemasukan = data.reduce(
         (sum, item) => sum + (item.Pemasukan || 0),
+        0,
+      );
+      const totalRetur = data.reduce((sum, item) => sum + (item.Retur || 0), 0);
+      const totalPenggunaan = data.reduce(
+        (sum, item) => sum + (item.Penggunaan || 0),
         0,
       );
       const totalPengeluaran = data.reduce(
@@ -232,7 +248,7 @@ export default function ScrapPage() {
         (sum, item) => sum + (item.SaldoAkhir || 0),
         0,
       );
-      const totalStokOpname = data.reduce(
+      const totalPencacahan = data.reduce(
         (sum, item) => sum + (item.Pencacahan || 0),
         0,
       );
@@ -241,7 +257,7 @@ export default function ScrapPage() {
         0,
       );
 
-      // Baris total
+      // BARIS TOTAL - SESUAIKAN DENGAN JUMLAH KOLOM
       const totalRows = [
         [], // Baris kosong
         [
@@ -251,62 +267,64 @@ export default function ScrapPage() {
           "",
           totalSaldoAwal.toLocaleString("id-ID"),
           totalPemasukan.toLocaleString("id-ID"),
+          totalRetur.toLocaleString("id-ID"),
+          totalPenggunaan.toLocaleString("id-ID"),
           totalPengeluaran.toLocaleString("id-ID"),
           totalPenyesuaian.toLocaleString("id-ID"),
           totalSaldoAkhir.toLocaleString("id-ID"),
-          totalStokOpname.toLocaleString("id-ID"),
+          totalPencacahan.toLocaleString("id-ID"),
           totalSelisih.toLocaleString("id-ID"),
           "",
         ],
-        [], // Baris kosong
+        [],
         ["*** AKHIR LAPORAN ***"],
       ];
 
-      // Gabungkan semua data
+      // GABUNGKAN SEMUA DATA
       const wsData = [
         [reportTitle],
         [periode],
         [tanggalCetak],
         [totalData],
-        [], // Baris kosong
+        [],
         columnHeaders,
         ...dataRows,
         ...totalRows,
       ];
 
-      // Buat worksheet
       const ws = XLSX.utils.aoa_to_sheet(wsData);
 
-      // Merge cells untuk header laporan
+      // MERGE CELLS - SESUAIKAN DENGAN JUMLAH KOLOM (14 kolom = index 13)
       if (!ws["!merges"]) ws["!merges"] = [];
+      const lastColIndex = 13; // Karena ada 14 kolom (0-13)
 
-      // Merge untuk judul laporan (baris 1)
-      ws["!merges"].push({ s: { r: 0, c: 0 }, e: { r: 0, c: 11 } });
-      // Merge untuk periode (baris 2)
-      ws["!merges"].push({ s: { r: 1, c: 0 }, e: { r: 1, c: 11 } });
-      // Merge untuk tanggal cetak (baris 3)
-      ws["!merges"].push({ s: { r: 2, c: 0 }, e: { r: 2, c: 11 } });
-      // Merge untuk total data (baris 4)
-      ws["!merges"].push({ s: { r: 3, c: 0 }, e: { r: 3, c: 11 } });
-      // Merge untuk baris TOTAL (baris terakhir - 2)
+      ws["!merges"].push({ s: { r: 0, c: 0 }, e: { r: 0, c: lastColIndex } });
+      ws["!merges"].push({ s: { r: 1, c: 0 }, e: { r: 1, c: lastColIndex } });
+      ws["!merges"].push({ s: { r: 2, c: 0 }, e: { r: 2, c: lastColIndex } });
+      ws["!merges"].push({ s: { r: 3, c: 0 }, e: { r: 3, c: lastColIndex } });
+
+      // Merge untuk baris TOTAL (4 kolom pertama)
       ws["!merges"].push({
         s: { r: wsData.length - 2, c: 0 },
         e: { r: wsData.length - 2, c: 3 },
       });
-      // Merge untuk akhir laporan (baris terakhir)
+
+      // Merge untuk akhir laporan
       ws["!merges"].push({
         s: { r: wsData.length - 1, c: 0 },
-        e: { r: wsData.length - 1, c: 11 },
+        e: { r: wsData.length - 1, c: lastColIndex },
       });
 
-      // Atur lebar kolom
-      const wscols = [
+      // LEBAR KOLOM - SESUAIKAN
+      ws["!cols"] = [
         { wch: 5 }, // No.
         { wch: 15 }, // Kode Barang
         { wch: 40 }, // Nama Barang
         { wch: 10 }, // Satuan
         { wch: 15 }, // Saldo Awal
         { wch: 12 }, // Pemasukan
+        { wch: 12 }, // Pengembalian Produksi
+        { wch: 12 }, // Penggunaan
         { wch: 12 }, // Pengeluaran
         { wch: 12 }, // Penyesuaian
         { wch: 15 }, // Saldo Akhir
@@ -314,9 +332,8 @@ export default function ScrapPage() {
         { wch: 12 }, // Selisih
         { wch: 30 }, // Keterangan
       ];
-      ws["!cols"] = wscols;
 
-      // Set row heights untuk header
+      // TINGGI BARIS
       ws["!rows"] = [
         { hpt: 30 }, // Baris 1 (judul)
         { hpt: 20 }, // Baris 2 (periode)
@@ -326,14 +343,12 @@ export default function ScrapPage() {
         { hpt: 25 }, // Baris 6 (header kolom)
       ];
 
-      // Tambahkan worksheet ke workbook
       XLSX.utils.book_append_sheet(wb, ws, "Scrap");
 
-      // Download file
       const fileName = `LAPORAN_SCRAP_${tgl1}_${tgl2}.xlsx`;
       XLSX.writeFile(wb, fileName);
 
-      // Kirim notifikasi ke Telegram
+      // NOTIFIKASI - UPDATE DENGAN DATA YANG LENGKAP
       await sendTelegramNotification({
         fileName,
         periode: `${format(new Date(tgl1), "dd MMM yyyy")} - ${format(new Date(tgl2), "dd MMM yyyy")}`,
@@ -353,7 +368,7 @@ export default function ScrapPage() {
     }
   };
 
-  // Hitung total untuk summary
+  // Hitung total untuk summary (hanya jika ada data)
   const totalSaldoAwal = data.reduce(
     (sum, item) => sum + (item.saldoawal || 0),
     0,
@@ -372,6 +387,7 @@ export default function ScrapPage() {
   );
   const totalSelisih = data.reduce((sum, item) => sum + (item.selisih || 0), 0);
 
+  // Loading state untuk user
   if (userLoading) {
     return (
       <div className="container mx-auto px-4 py-8">
@@ -385,20 +401,27 @@ export default function ScrapPage() {
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="flex flex-col gap-6">
-        {/* Header */}
+        {/* Header dengan informasi user */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
             <h1 className="text-3xl font-bold">Mutasi Barang Scrap</h1>
             <p className="text-muted-foreground">
-              Laporan mutasi scrap periode {formatDate(tgl1)} -{" "}
-              {formatDate(tgl2)}
+              {isFirstLoad
+                ? "Pilih periode dan klik tampilkan untuk melihat data"
+                : hasData && data.length > 0
+                  ? `Laporan mutasi scrap periode ${formatDate(tgl1)} - ${formatDate(tgl2)}`
+                  : "Pilih periode dan klik tampilkan untuk melihat data"}
             </p>
           </div>
           <div className="flex gap-2">
             <Button
               variant="outline"
-              onClick={() => fetchData(tgl1, tgl2)}
-              disabled={loading}
+              onClick={() => {
+                if (!isFirstLoad && hasData) {
+                  fetchData(tgl1, tgl2);
+                }
+              }}
+              disabled={loading || isFirstLoad || !hasData}
             >
               <RefreshCw
                 className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`}
@@ -408,7 +431,7 @@ export default function ScrapPage() {
             <Button
               variant="outline"
               onClick={exportToExcel}
-              disabled={data.length === 0 || loading}
+              disabled={data.length === 0 || loading || isFirstLoad || !hasData}
             >
               <Download className="h-4 w-4 mr-2" />
               Export Excel
@@ -424,129 +447,176 @@ export default function ScrapPage() {
           defaultTgl2={tgl2}
         />
 
-        {/* Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+        {/* Kondisi Loading - Tampilkan loading spinner saja */}
+        {loading ? (
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Total Item
-              </CardTitle>
-              <Package className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <p className="text-2xl font-bold">{data.length}</p>
-              <p className="text-xs text-muted-foreground mt-1">Jumlah Scrap</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Saldo Awal
-              </CardTitle>
-              <TrendingUp className="h-4 w-4 text-blue-500" />
-            </CardHeader>
-            <CardContent>
-              <p className="text-2xl font-bold text-blue-600">
-                {formatNumber(totalSaldoAwal)}
-              </p>
-              <p className="text-xs text-muted-foreground mt-1">
-                Total stok awal
+            <CardContent className="flex flex-col items-center justify-center py-16">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mb-4"></div>
+              <h3 className="text-lg font-semibold text-muted-foreground">
+                Memuat Data...
+              </h3>
+              <p className="text-muted-foreground text-sm">
+                Mohon tunggu sebentar
               </p>
             </CardContent>
           </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Pemasukan
-              </CardTitle>
-              <PlusCircle className="h-4 w-4 text-green-500" />
-            </CardHeader>
-            <CardContent>
-              <p className="text-2xl font-bold text-green-600">
-                {formatNumber(totalPemasukan)}
-              </p>
-              <p className="text-xs text-muted-foreground mt-1">
-                Total barang masuk
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Pengeluaran
-              </CardTitle>
-              <MinusCircle className="h-4 w-4 text-red-500" />
-            </CardHeader>
-            <CardContent>
-              <p className="text-2xl font-bold text-red-600">
-                {formatNumber(totalPengeluaran)}
-              </p>
-              <p className="text-xs text-muted-foreground mt-1">
-                Total barang keluar
+        ) : isFirstLoad ? (
+          /* Kondisi First Load - Belum pernah fetch data sama sekali */
+          <Card className="border-2 border-dashed border-muted-foreground/30">
+            <CardContent className="flex flex-col items-center justify-center py-16">
+              <Search className="h-16 w-16 text-muted-foreground/50 mb-4" />
+              <h3 className="text-xl font-semibold text-muted-foreground mb-2">
+                Belum Ada Data
+              </h3>
+              <p className="text-muted-foreground text-center max-w-md">
+                Silakan pilih periode tanggal di atas dan klik tombol
+                <span className="font-medium text-primary mx-1">
+                  "Tampilkan"
+                </span>
+                untuk melihat laporan mutasi scrap.
               </p>
             </CardContent>
           </Card>
+        ) : hasData && data.length > 0 ? (
+          /* Kondisi Ada Data - Tampilkan semua konten */
+          <>
+            {/* Summary Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">
+                    Total Item
+                  </CardTitle>
+                  <Package className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <p className="text-2xl font-bold">{data.length}</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Jumlah Scrap
+                  </p>
+                </CardContent>
+              </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Saldo Akhir
-              </CardTitle>
-              <TrendingDown className="h-4 w-4 text-purple-500" />
-            </CardHeader>
-            <CardContent>
-              <p className="text-2xl font-bold text-purple-600">
-                {formatNumber(totalSaldoAkhir)}
-              </p>
-              <p className="text-xs text-muted-foreground mt-1">
-                Total stok akhir
-              </p>
-            </CardContent>
-          </Card>
-        </div>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">
+                    Saldo Awal
+                  </CardTitle>
+                  <TrendingUp className="h-4 w-4 text-blue-500" />
+                </CardHeader>
+                <CardContent>
+                  <p className="text-2xl font-bold text-blue-600">
+                    {formatNumber(totalSaldoAwal)}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Total stok awal
+                  </p>
+                </CardContent>
+              </Card>
 
-        {/* Selisih Alert */}
-        {totalSelisih !== 0 && (
-          <Alert variant={totalSelisih > 0 ? "default" : "destructive"}>
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription>
-              Terdapat selisih stok sebesar{" "}
-              {formatNumber(Math.abs(totalSelisih))}.
-              {totalSelisih > 0
-                ? " Stok fisik lebih banyak"
-                : " Stok fisik lebih sedikit"}{" "}
-              dari catatan.
-            </AlertDescription>
-          </Alert>
-        )}
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">
+                    Pemasukan
+                  </CardTitle>
+                  <PlusCircle className="h-4 w-4 text-green-500" />
+                </CardHeader>
+                <CardContent>
+                  <p className="text-2xl font-bold text-green-600">
+                    {formatNumber(totalPemasukan)}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Total barang masuk
+                  </p>
+                </CardContent>
+              </Card>
 
-        {/* Error Alert */}
-        {error && (
-          <Alert variant="destructive">
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
-        )}
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">
+                    Pengeluaran
+                  </CardTitle>
+                  <MinusCircle className="h-4 w-4 text-red-500" />
+                </CardHeader>
+                <CardContent>
+                  <p className="text-2xl font-bold text-red-600">
+                    {formatNumber(totalPengeluaran)}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Total barang keluar
+                  </p>
+                </CardContent>
+              </Card>
 
-        {/* DataTable */}
-        <Card>
-          <CardContent className="p-6">
-            {loading ? (
-              <div className="flex items-center justify-center h-64">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-              </div>
-            ) : (
-              <DataTableMutasi
-                columns={columns}
-                data={data}
-                searchKey="NamaBarang"
-                searchPlaceholder="Cari nama barang..."
-              />
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">
+                    Saldo Akhir
+                  </CardTitle>
+                  <TrendingDown className="h-4 w-4 text-purple-500" />
+                </CardHeader>
+                <CardContent>
+                  <p className="text-2xl font-bold text-purple-600">
+                    {formatNumber(totalSaldoAkhir)}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Total stok akhir
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Selisih Alert */}
+            {totalSelisih !== 0 && (
+              <Alert variant={totalSelisih > 0 ? "default" : "destructive"}>
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>
+                  Terdapat selisih stok sebesar{" "}
+                  {formatNumber(Math.abs(totalSelisih))}.
+                  {totalSelisih > 0
+                    ? " Stok fisik lebih banyak"
+                    : " Stok fisik lebih sedikit"}{" "}
+                  dari catatan.
+                </AlertDescription>
+              </Alert>
             )}
-          </CardContent>
-        </Card>
+
+            {/* Error Alert */}
+            {error && (
+              <Alert variant="destructive">
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
+
+            {/* DataTable */}
+            <Card>
+              <CardContent className="p-6">
+                <DataTableMutasi
+                  columns={columns}
+                  data={data}
+                  searchKey="NamaBarang"
+                  searchPlaceholder="Cari nama barang..."
+                />
+              </CardContent>
+            </Card>
+          </>
+        ) : (
+          /* Kondisi Data Kosong - Sudah fetch tapi tidak ada data */
+          <Card className="border-2 border-dashed border-muted-foreground/30">
+            <CardContent className="flex flex-col items-center justify-center py-12">
+              <Package className="h-12 w-12 text-muted-foreground/50 mb-3" />
+              <h3 className="text-lg font-semibold text-muted-foreground mb-1">
+                Tidak Ada Data
+              </h3>
+              <p className="text-muted-foreground text-center">
+                Tidak ditemukan data untuk periode yang dipilih.
+              </p>
+              <p className="text-muted-foreground text-sm mt-1">
+                Coba pilih rentang tanggal yang berbeda.
+              </p>
+            </CardContent>
+          </Card>
+        )}
       </div>
     </div>
   );

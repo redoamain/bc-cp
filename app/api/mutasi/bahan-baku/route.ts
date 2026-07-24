@@ -45,6 +45,7 @@ export async function GET(request: NextRequest) {
       Keterangan: item.Keterangan || "",
       Pencacahan: item.Pencacahan ? Number(item.Pencacahan) : 0,
       Penggunaan: item.Penggunaan ? Number(item.Penggunaan) : 0,
+      Retur: item.Retur ? Number(item.Retur) : 0,
     }));
 
     return NextResponse.json({

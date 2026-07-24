@@ -2,6 +2,8 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { format } from "date-fns";
+import { id } from "date-fns/locale";
+import * as XLSX from "xlsx";
 import { FilterTanggal } from "@/components/filter-tanggal";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,7 +14,12 @@ import {
   AlertTriangle,
   Info,
   PackageX,
-  CheckCircle,
+  Download,
+  TrendingUp,
+  TrendingDown,
+  PlusCircle,
+  MinusCircle,
+  AlertCircle,
 } from "lucide-react";
 import { ColumnDef } from "@tanstack/react-table";
 import {
@@ -21,8 +28,12 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { useUser } from "../../contexts/UserContext";
 
-// Type definitions
+// ============================================
+// TYPE DEFINITIONS
+// ============================================
 interface ProduksiUsage {
   ProdID_Bahan: string;
   SPK: string;
@@ -62,6 +73,10 @@ interface TrackingItem {
   IsOverUsed: boolean;
 }
 
+// ============================================
+// KOMPONEN CHILD
+// ============================================
+
 // Component untuk menampilkan detail stock
 const StockDetail = ({ item }: { item: TrackingItem }) => {
   const [expanded, setExpanded] = useState(false);
@@ -76,7 +91,7 @@ const StockDetail = ({ item }: { item: TrackingItem }) => {
         {expanded ? "▼" : "▶"} Detail
       </button>
       {expanded && (
-        <div className="mt-2 space-y-1 text-xs bg-gray-50 p-2 rounded-lg min-w-[200px]">
+        <div className="mt-2 space-y-1 text-xs bg-gray-50 p-2 rounded-lg min-w-50">
           <div className="grid grid-cols-2 gap-1">
             <span className="text-gray-500">Stok Awal:</span>
             <span className="font-medium">
@@ -146,9 +161,6 @@ const ProduksiList = ({ produksiList }: { produksiList: ProduksiUsage[] }) => {
                 Jumlah: {(prod.Jumlah_Bahan || 0).toLocaleString()} 
               </div>
               <div className="text-gray-400">PIC: {prod.PIC_Bahan || "-"}</div>
-              <div className="text-gray-400 text-xs">
-                Tgl: {prod.Tanggal_Produksi || "-"}
-              </div>
             </div>
           ))}
         </div>
@@ -193,7 +205,6 @@ const BarangJadiList = ({
               <div className="font-medium text-green-700">
                 {bj.NamaBarang || bj.ItemID}
               </div>
-              <div className="text-gray-500">Kode: {bj.ItemID || "-"}</div>
               <div className="text-gray-500">SPK: {bj.SPK || "-"}</div>
               <div className="text-gray-500">
                 ProdID: {bj.ProdID_Hasil || "-"}
@@ -202,9 +213,6 @@ const BarangJadiList = ({
                 Jumlah: {(bj.Jumlah_Kgs || 0).toLocaleString()} 
               </div>
               <div className="text-gray-400">PIC: {bj.PIC_Hasil || "-"}</div>
-              <div className="text-gray-400 text-xs">
-                Tgl: {bj.Tanggal_Produksi || "-"}
-              </div>
             </div>
           ))}
         </div>
@@ -213,7 +221,53 @@ const BarangJadiList = ({
   );
 };
 
-// Columns
+// ============================================
+// FUNGSI NOTIFIKASI TELEGRAM
+// ============================================
+const sendTelegramNotification = async (exportData: {
+  fileName: string;
+  periode: string;
+  totalData: number;
+  totalMasuk: number;
+  totalTerpakai: number;
+  totalBarangJadi: number;
+  userAgent?: string;
+  userName?: string;
+  userBagian?: string;
+}) => {
+  try {
+    const response = await fetch("/api/notif", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        message:
+          `📦 |TRACKING BAHAN BAKU → BARANG JADI DIEXPORT\n\n` +
+          `📁 |File: ${exportData.fileName}\n` +
+          `📅 |Periode: ${exportData.periode}\n` +
+          `📊 |Total Item: ${exportData.totalData} bahan baku\n\n` +
+          `📥 |Total Masuk: ${exportData.totalMasuk.toLocaleString("id-ID")} \n` +
+          `⚙️ |Total Terpakai: ${exportData.totalTerpakai.toLocaleString("id-ID")} \n` +
+          `📦 |Total Barang Jadi: ${exportData.totalBarangJadi.toLocaleString("id-ID")} \n\n` +
+          `🕐 |Waktu Export: ${format(new Date(), "dd MMM yyyy HH:mm:ss", { locale: id })}\n` +
+          `👤 |Diekspor oleh: ${exportData.userName || "Unknown"} ${exportData.userBagian ? `(${exportData.userBagian})` : ""}\n` +
+          `💻 |User Agent: ${exportData.userAgent || "Unknown"}`,
+        parseMode: "Markdown",
+      }),
+    });
+
+    if (!response.ok) {
+      console.error("Gagal mengirim notifikasi Telegram");
+    }
+  } catch (error) {
+    console.error("Error sending Telegram notification:", error);
+  }
+};
+
+// ============================================
+// KOLOM TABEL (SESUAI FRONTEND)
+// ============================================
 const columns: ColumnDef<TrackingItem>[] = [
   {
     accessorKey: "ItemID_Bahan",
@@ -358,46 +412,11 @@ const columns: ColumnDef<TrackingItem>[] = [
       </span>
     ),
   },
-  {
-    id: "stock_sekarang",
-    header: "Stock",
-    size: 100,
-    cell: ({ row }) => {
-      const item = row.original;
-      const stock = item.StockSekarang || 0;
-      const status = item.StatusStock || "Aman";
-      const bgColor = item.StatusBg || "bg-green-100";
-
-      let icon = null;
-      if (status === "MINUS!")
-        icon = <AlertTriangle className="h-3 w-3 inline mr-1" />;
-      else if (status === "Habis")
-        icon = <PackageX className="h-3 w-3 inline mr-1" />;
-      else if (status === "Habis Terpakai")
-        icon = <CheckCircle className="h-3 w-3 inline mr-1" />;
-      else icon = <Package className="h-3 w-3 inline mr-1" />;
-
-      return (
-        <div
-          className={`${bgColor} px-2 py-1 rounded-lg text-center font-medium`}
-        >
-          {stock.toLocaleString()} 
-          <div className="text-xs flex items-center justify-center gap-1">
-            {icon}
-            {status}
-          </div>
-        </div>
-      );
-    },
-  },
-  {
-    id: "stock_detail",
-    header: "Info",
-    size: 60,
-    cell: ({ row }) => <StockDetail item={row.original} />,
-  },
 ];
 
+// ============================================
+// COMPONENT UTAMA
+// ============================================
 export default function TrackingBahanKeJadiPage() {
   const today = new Date();
   const defaultTgl1 = format(
@@ -409,12 +428,27 @@ export default function TrackingBahanKeJadiPage() {
   const [data, setData] = useState<TrackingItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [tgl1, setTgl1] = useState(defaultTgl1);
+  const [tgl2, setTgl2] = useState(defaultTgl2);
   const [summary, setSummary] = useState({
     total_bahan: 0,
     total_jumlah_masuk: 0,
     total_terpakai: 0,
     total_barang_jadi: 0,
   });
+
+  // User Context
+  const { user, isLoading: userLoading } = useUser();
+
+  const getUserInfo = useCallback(() => {
+    if (!user) return { name: "Unknown", bagian: "Unknown" };
+    const name =
+      user.Nama || user.name || user.UserName || user.username || "Unknown";
+    const bagian = user.Bagian || user.role || user.jabatan || "Unknown";
+    return { name, bagian };
+  }, [user]);
+
+  const userInfo = getUserInfo();
 
   const fetchData = useCallback(async (startDate: string, endDate: string) => {
     setLoading(true);
@@ -428,6 +462,8 @@ export default function TrackingBahanKeJadiPage() {
 
       if (result.success) {
         setData(result.data || []);
+        setTgl1(startDate);
+        setTgl2(endDate);
         setSummary(
           result.summary || {
             total_bahan: 0,
@@ -455,6 +491,257 @@ export default function TrackingBahanKeJadiPage() {
     fetchData(startDate, endDate);
   };
 
+  // ============================================
+  // FUNGSI EXPORT EXCEL (SIMPEL)
+  // ============================================
+  const exportToExcel = async () => {
+    try {
+      if (data.length === 0) {
+        alert("Tidak ada data untuk diexport");
+        return;
+      }
+
+      const wb = XLSX.utils.book_new();
+
+      // Header Laporan
+      const reportTitle = "LAPORAN TRACKING BAHAN BAKU → BARANG JADI";
+      const periode = `Periode: ${format(new Date(tgl1), "dd MMMM yyyy")} - ${format(new Date(tgl2), "dd MMMM yyyy")}`;
+      const tanggalCetak = `Tanggal Cetak: ${format(new Date(), "dd MMMM yyyy HH:mm:ss")}`;
+      const totalData = `Total Data: ${data.length} item bahan baku`;
+
+      // Header Kolom (SESUAI FRONTEND - Tanpa Status Stok & Over Used)
+      const columnHeaders = [
+        "No.",
+        "Kode Bahan",
+        "Nama Bahan",
+        "Jenis Dokumen",
+        "No. BPB",
+        "Tgl Masuk",
+        "Pemasok",
+        "Pembelian",
+        "Stok Awal",
+        "Total Tersedia",
+        "Terpakai",
+        "Persentase",
+        "Detail Produksi",
+        "Barang Jadi",
+        "Total Jadi",
+      ];
+
+      // Data Rows
+      const dataRows = data.map((item, index) => {
+        // Format Barang Jadi dengan rapi - per item di baris baru
+        let barangJadiText = "-";
+        if (
+          item.MenghasilkanBarangJadi &&
+          item.MenghasilkanBarangJadi.length > 0
+        ) {
+          barangJadiText = item.MenghasilkanBarangJadi.map((bj, idx) => {
+            const nama = bj.NamaBarang || bj.ItemID || "-";
+            const jumlah = (bj.Jumlah_Kgs || 0).toLocaleString();
+            const spk = bj.SPK || "-";
+            const pic = bj.PIC_Hasil || "-";
+            // Format: [1] Nama Barang: 100  | SPK: SPK-001 | PIC: John
+            return `[${idx + 1}] ${nama}: ${jumlah}  | SPK: ${spk} | PIC: ${pic}`;
+          }).join("\n"); // Baris baru untuk setiap item
+        }
+
+        // Format Detail Produksi
+        let produksiText = "-";
+        if (item.DigunakanDiProduksi && item.DigunakanDiProduksi.length > 0) {
+          produksiText = item.DigunakanDiProduksi.map((prod, idx) => {
+            const jumlah = (prod.Jumlah_Bahan || 0).toLocaleString();
+            const spk = prod.SPK || "-";
+            const pic = prod.PIC_Bahan || "-";
+            return `[${idx + 1}] SPK: ${spk} | ${jumlah}  | PIC: ${pic}`;
+          }).join("\n");
+        }
+
+        return [
+          index + 1,
+          item.ItemID_Bahan || "-",
+          item.NamaBahan || "-",
+          item.JenisDokumen || "-",
+          item.NomorBPB || "-",
+          item.TanggalBPB || "-",
+          item.Pemasok || "-",
+          item.JumlahMasuk_Kgs || 0,
+          item.StokAwal || 0,
+          item.TotalStokTersedia || 0,
+          item.TotalKgsTerpakai || 0,
+          `${item.PersentaseTerpakai || 0}%`,
+          produksiText,
+          barangJadiText,
+          item.TotalBarangJadi || 0,
+        ];
+      });
+
+      // Hitung Total
+      const totalMasuk = data.reduce(
+        (sum, item) => sum + (item.JumlahMasuk_Kgs || 0),
+        0,
+      );
+      const totalStokAwal = data.reduce(
+        (sum, item) => sum + (item.StokAwal || 0),
+        0,
+      );
+      const totalTersedia = data.reduce(
+        (sum, item) => sum + (item.TotalStokTersedia || 0),
+        0,
+      );
+      const totalTerpakai = data.reduce(
+        (sum, item) => sum + (item.TotalKgsTerpakai || 0),
+        0,
+      );
+      const totalBarangJadi = data.reduce(
+        (sum, item) => sum + (item.TotalBarangJadi || 0),
+        0,
+      );
+
+      // Baris Total
+      const totalRows = [
+        [], // Baris kosong
+        [
+          "TOTAL",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          totalMasuk.toLocaleString("id-ID"),
+          totalStokAwal.toLocaleString("id-ID"),
+          totalTersedia.toLocaleString("id-ID"),
+          totalTerpakai.toLocaleString("id-ID"),
+          "",
+          "",
+          "",
+          totalBarangJadi.toLocaleString("id-ID"),
+        ],
+        [],
+        ["*** AKHIR LAPORAN ***"],
+      ];
+
+      // Gabungkan semua data
+      const wsData = [
+        [reportTitle],
+        [periode],
+        [tanggalCetak],
+        [totalData],
+        [], // Baris kosong
+        columnHeaders,
+        ...dataRows,
+        ...totalRows,
+      ];
+
+      const ws = XLSX.utils.aoa_to_sheet(wsData);
+
+      // Merge Cells
+      if (!ws["!merges"]) ws["!merges"] = [];
+      const lastColIndex = 14; // 15 kolom (0-14)
+
+      // Merge header laporan
+      ws["!merges"].push({ s: { r: 0, c: 0 }, e: { r: 0, c: lastColIndex } });
+      ws["!merges"].push({ s: { r: 1, c: 0 }, e: { r: 1, c: lastColIndex } });
+      ws["!merges"].push({ s: { r: 2, c: 0 }, e: { r: 2, c: lastColIndex } });
+      ws["!merges"].push({ s: { r: 3, c: 0 }, e: { r: 3, c: lastColIndex } });
+
+      // Merge baris TOTAL
+      ws["!merges"].push({
+        s: { r: wsData.length - 3, c: 0 },
+        e: { r: wsData.length - 3, c: 6 },
+      });
+
+      // Merge akhir laporan
+      ws["!merges"].push({
+        s: { r: wsData.length - 1, c: 0 },
+        e: { r: wsData.length - 1, c: lastColIndex },
+      });
+
+      // Lebar Kolom
+      ws["!cols"] = [
+        { wch: 6 }, // No.
+        { wch: 15 }, // Kode Bahan
+        { wch: 30 }, // Nama Bahan
+        { wch: 15 }, // Jenis Dokumen
+        { wch: 15 }, // No. BPB
+        { wch: 15 }, // Tgl Masuk
+        { wch: 25 }, // Pemasok
+        { wch: 15 }, // Masuk ()
+        { wch: 18 }, // Stok Awal ()
+        { wch: 18 }, // Total Tersedia ()
+        { wch: 18 }, // Terpakai ()
+        { wch: 15 }, // Persentase
+        { wch: 60 }, // Detail Produksi
+        { wch: 80 }, // Barang Jadi (diperbesar untuk multi-line)
+        { wch: 18 }, // Total Jadi ()
+      ];
+
+      // Set row heights - penting untuk wrap text
+      ws["!rows"] = [
+        { hpt: 30 }, // Baris 1 (judul)
+        { hpt: 20 }, // Baris 2 (periode)
+        { hpt: 20 }, // Baris 3 (tanggal cetak)
+        { hpt: 20 }, // Baris 4 (total data)
+        { hpt: 5 }, // Baris 5 (kosong)
+        { hpt: 25 }, // Baris 6 (header)
+      ];
+
+      // Enable wrap text untuk kolom Barang Jadi dan Detail Produksi
+      // (Ini akan membuat teks dengan \n terbaca sebagai new line)
+      const range = XLSX.utils.decode_range(ws["!ref"] || "A1");
+      for (let R = range.s.r; R <= range.e.r; R++) {
+        for (let C = range.s.c; C <= range.e.c; C++) {
+          const addr = XLSX.utils.encode_cell({ r: R, c: C });
+          if (!ws[addr]) continue;
+          if (!ws[addr].s) ws[addr].s = {};
+          // Apply wrap text for columns: Detail Produksi (col 12) dan Barang Jadi (col 13)
+          if (C === 12 || C === 13) {
+            ws[addr].s.alignment = { wrapText: true, vertical: "top" };
+          } else {
+            ws[addr].s.alignment = { wrapText: false, vertical: "center" };
+          }
+        }
+      }
+
+      XLSX.utils.book_append_sheet(wb, ws, "Tracking Bahan");
+
+      const fileName = `TRACKING_BAHAN_${tgl1}_${tgl2}.xlsx`;
+      XLSX.writeFile(wb, fileName);
+
+      // Kirim notifikasi Telegram
+      await sendTelegramNotification({
+        fileName,
+        periode: `${format(new Date(tgl1), "dd MMM yyyy")} - ${format(new Date(tgl2), "dd MMM yyyy")}`,
+        totalData: data.length,
+        totalMasuk,
+        totalTerpakai,
+        totalBarangJadi,
+        userAgent: navigator.userAgent,
+        userName: userInfo.name,
+        userBagian: userInfo.bagian,
+      });
+    } catch (error) {
+      console.error("Export error:", error);
+      alert("Gagal mengexport data");
+    }
+  };
+
+  // ============================================
+  // RENDER
+  // ============================================
+
+  // Loading state
+  if (userLoading) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="flex flex-col gap-6">
@@ -469,25 +756,95 @@ export default function TrackingBahanKeJadiPage() {
               dihasilkan
             </p>
           </div>
-          <Button
-            variant="outline"
-            onClick={() => fetchData(defaultTgl1, defaultTgl2)}
-            disabled={loading}
-          >
-            <RefreshCw
-              className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`}
-            />
-            Refresh
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={() => fetchData(tgl1, tgl2)}
+              disabled={loading}
+            >
+              <RefreshCw
+                className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`}
+              />
+              Refresh
+            </Button>
+            <Button
+              variant="outline"
+              onClick={exportToExcel}
+              disabled={data.length === 0 || loading}
+            >
+              <Download className="h-4 w-4 mr-2" />
+              Export Excel
+            </Button>
+          </div>
         </div>
 
-        {/* Filter - Hanya Filter Tanggal, jenis dokumen pakai search di DataTable */}
+        {/* Filter */}
         <FilterTanggal
           onFilter={handleFilter}
           isLoading={loading}
-          defaultTgl1={defaultTgl1}
-          defaultTgl2={defaultTgl2}
+          defaultTgl1={tgl1}
+          defaultTgl2={tgl2}
         />
+
+        {/* Info Card - Panduan */}
+        <Card className="border-2 border-dashed border-muted-foreground/20">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Info className="h-5 w-5 text-primary" />
+              Panduan Tracking Bahan Baku → Barang Jadi
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              <div className="flex items-start gap-2 p-2 rounded-lg bg-blue-50">
+                <Package className="h-4 w-4 text-blue-600 mt-0.5" />
+                <div>
+                  <p className="font-medium text-sm">Kode & Nama Bahan</p>
+                  <p className="text-xs text-muted-foreground">
+                    Identitas bahan baku yang dilacak
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-start gap-2 p-2 rounded-lg bg-green-50">
+                <PlusCircle className="h-4 w-4 text-green-600 mt-0.5" />
+                <div>
+                  <p className="font-medium text-sm">Masuk & Stok</p>
+                  <p className="text-xs text-muted-foreground">
+                    Jumlah masuk, stok awal, dan total tersedia
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-start gap-2 p-2 rounded-lg bg-purple-50">
+                <MinusCircle className="h-4 w-4 text-purple-600 mt-0.5" />
+                <div>
+                  <p className="font-medium text-sm">Pemakaian</p>
+                  <p className="text-xs text-muted-foreground">
+                    Total terpakai dan persentase pemakaian
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-start gap-2 p-2 rounded-lg bg-orange-50">
+                <TrendingUp className="h-4 w-4 text-orange-600 mt-0.5" />
+                <div>
+                  <p className="font-medium text-sm">Detail Produksi</p>
+                  <p className="text-xs text-muted-foreground">
+                    Rincian pemakaian di setiap produksi
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-start gap-2 p-2 rounded-lg bg-emerald-50">
+                <Package className="h-4 w-4 text-emerald-600 mt-0.5" />
+                <div>
+                  <p className="font-medium text-sm">Barang Jadi</p>
+                  <p className="text-xs text-muted-foreground">
+                    Hasil produksi dari bahan baku
+                  </p>
+                </div>
+              </div>
+            </div>
+        
+          </CardContent>
+        </Card>
 
         {/* Summary Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
@@ -497,6 +854,7 @@ export default function TrackingBahanKeJadiPage() {
             </CardHeader>
             <CardContent>
               <p className="text-xl font-bold">{summary.total_bahan || 0}</p>
+              <p className="text-xs text-muted-foreground">Item bahan baku</p>
             </CardContent>
           </Card>
           <Card>
@@ -504,9 +862,10 @@ export default function TrackingBahanKeJadiPage() {
               <CardTitle className="text-xs font-medium">Total Masuk</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-sm font-bold text-blue-600">
-                {(summary.total_jumlah_masuk || 0).toLocaleString()} 
+              <p className="text-2xl font-bold text-blue-600">
+                {(summary.total_jumlah_masuk || 0).toLocaleString()}
               </p>
+              <p className="text-xs text-muted-foreground"></p>
             </CardContent>
           </Card>
           <Card>
@@ -516,9 +875,10 @@ export default function TrackingBahanKeJadiPage() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-sm font-bold text-purple-600">
-                {(summary.total_terpakai || 0).toLocaleString()} 
+              <p className="text-2xl font-bold text-purple-600">
+                {(summary.total_terpakai || 0).toLocaleString()}
               </p>
+              <p className="text-xs text-muted-foreground"></p>
             </CardContent>
           </Card>
           <Card>
@@ -526,21 +886,23 @@ export default function TrackingBahanKeJadiPage() {
               <CardTitle className="text-xs font-medium">Barang Jadi</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-sm font-bold text-green-600">
-                {(summary.total_barang_jadi || 0).toLocaleString()} 
+              <p className="text-2xl font-bold text-green-600">
+                {(summary.total_barang_jadi || 0).toLocaleString()}
               </p>
+              <p className="text-xs text-muted-foreground"></p>
             </CardContent>
           </Card>
         </div>
 
         {/* Error Alert */}
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
-            {error}
-          </div>
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
         )}
 
-        {/* Data Table - dengan fitur search untuk filter jenis dokumen */}
+        {/* Data Table */}
         <Card>
           <CardContent className="p-6">
             {loading ? (
