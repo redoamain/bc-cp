@@ -1,6 +1,7 @@
 const { createServer } = require("http");
 const { parse } = require("url");
 const next = require("next");
+require("dotenv").config();
 
 const port = process.env.PORT;
 const app = next({ dev: false });
