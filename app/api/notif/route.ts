@@ -11,14 +11,35 @@ interface TelegramResponse {
 export async function POST(req: NextRequest) {
   const { message } = await req.json(); // Mendapatkan data JSON dari request
 
-  const chatIds = [
-    "904514717",
-    "6551726602",
-    "5338845190",
-    "6024064758",
-  ]; // Daftar chat IDs yang ingin dikirimi pesan
-  // "6551726602", "5338845190", "6024064758","904514717"
-  const token = "8817696287:AAFBY_HNx4kKq7rsEO08CiH69QET-Lp7WJw"; // Ganti dengan token bot Telegram Anda
+  // Ambil chat IDs dari environment variable dan parse sebagai array
+  const chatIdsString = process.env.TELEGRAM_CHAT_IDS;
+  if (!chatIdsString) {
+    return NextResponse.json(
+      {
+        success: false,
+        message: "TELEGRAM_CHAT_IDS environment variable is not set",
+      },
+      { status: 500 },
+    );
+  }
+
+  // Parse chat IDs (format: "id1,id2,id3,id4")
+  const chatIds = chatIdsString
+    .split(",")
+    .map((id) => id.trim())
+    .filter((id) => id.length > 0);
+
+  // Ambil token dari environment variable
+  const token = process.env.TELEGRAM_BOT_TOKEN;
+  if (!token) {
+    return NextResponse.json(
+      {
+        success: false,
+        message: "TELEGRAM_BOT_TOKEN environment variable is not set",
+      },
+      { status: 500 },
+    );
+  }
 
   const url = `https://api.telegram.org/bot${token}/sendMessage`; // URL API Telegram
 
