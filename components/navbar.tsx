@@ -148,13 +148,13 @@ export default function Navbar({
       icon: Grid2X2,
       description: "Laporan Posisi barang dalam proses",
     },
-    {
-      title: "Tracking Bahan → Jadi",
-      href: "/tracking-bahan-ke-jadi",
-      icon: Factory,
-      description:
-        "Lacak proses perubahan bahan baku menjadi produk jadi secara menyeluruh.",
-    },
+ //   {
+ //     title: "Tracking Bahan → Jadi",
+ //     href: "/tracking-bahan-ke-jadi",
+ //     icon: Factory,
+ //     description:
+ //       "Lacak proses perubahan bahan baku menjadi produk jadi secara menyeluruh.",
+ //   },
   ];
 
   // Komponen untuk ListItem NavigationMenu
