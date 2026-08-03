@@ -11,7 +11,6 @@ import { DataTable } from "@/components/data-table";
 import {
   RefreshCw,
   Package,
-  AlertTriangle,
   Info,
   PackageX,
   Download,
@@ -30,16 +29,18 @@ import {
 } from "@/components/ui/tooltip";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useUser } from "../../contexts/UserContext";
+import { Badge } from "@/components/ui/badge";
 
 // ============================================
 // TYPE DEFINITIONS
 // ============================================
-interface ProduksiUsage {
-  ProdID_Bahan: string;
+interface PemakaianDetail {
+  No_Transaksi: string;
   SPK: string;
-  Tanggal_Produksi: string;
-  Jumlah_Bahan: number;
-  PIC_Bahan: string;
+  Tanggal: string;
+  Jumlah: number;
+  PIC: string;
+  Keterangan: string;
 }
 
 interface BarangJadi {
@@ -53,89 +54,41 @@ interface BarangJadi {
 }
 
 interface TrackingItem {
+  ItemID_Original: string;
   ItemID_Bahan: string;
   NamaBahan: string;
+  Kategori: string;
   JenisDokumen: string;
   NomorBPB: string;
   TanggalBPB: string | null;
   Pemasok: string;
   JumlahMasuk_Kgs: number;
-  StokAwal: number;
-  TotalStokTersedia: number;
-  StockSekarang: number;
-  DigunakanDiProduksi: ProduksiUsage[];
+  StokAwal: number; // <-- TAMBAHKAN STOK AWAL
+  DigunakanDiProduksi: PemakaianDetail[];
   TotalKgsTerpakai: number;
-  PersentaseTerpakai: number;
   MenghasilkanBarangJadi: BarangJadi[];
   TotalBarangJadi: number;
-  StatusStock: string;
-  StatusBg: string;
-  IsOverUsed: boolean;
+  HasPemakaian: boolean;
+  JumlahPemakaian: number;
 }
 
 // ============================================
 // KOMPONEN CHILD
 // ============================================
 
-// Component untuk menampilkan detail stock
-const StockDetail = ({ item }: { item: TrackingItem }) => {
+// Component untuk menampilkan pemakaian
+const PemakaianList = ({
+  pemakaianList,
+}: {
+  pemakaianList: PemakaianDetail[];
+}) => {
   const [expanded, setExpanded] = useState(false);
 
-  return (
-    <div>
-      <button
-        onClick={() => setExpanded(!expanded)}
-        className="text-xs text-blue-600 hover:underline flex items-center gap-1"
-      >
-        <Info className="h-3 w-3" />
-        {expanded ? "▼" : "▶"} Detail
-      </button>
-      {expanded && (
-        <div className="mt-2 space-y-1 text-xs bg-gray-50 p-2 rounded-lg min-w-50">
-          <div className="grid grid-cols-2 gap-1">
-            <span className="text-gray-500">Stok Awal:</span>
-            <span className="font-medium">
-              {(item.StokAwal || 0).toLocaleString()} 
-            </span>
-            <span className="text-gray-500">+ Masuk:</span>
-            <span className="font-medium text-green-600">
-              + {(item.JumlahMasuk_Kgs || 0).toLocaleString()} 
-            </span>
-            <span className="text-gray-500">= Tersedia:</span>
-            <span className="font-medium">
-              {(item.TotalStokTersedia || 0).toLocaleString()} 
-            </span>
-            <span className="text-gray-500">- Terpakai:</span>
-            <span className="font-medium text-red-600">
-              - {(item.TotalKgsTerpakai || 0).toLocaleString()} 
-            </span>
-            <div className="border-t pt-1 mt-1 col-span-2">
-              <span className="font-bold">Stock Sekarang:</span>
-              <span
-                className={`font-bold ml-2 ${(item.StockSekarang || 0) < 0 ? "text-red-600" : "text-green-600"}`}
-              >
-                {(item.StockSekarang || 0).toLocaleString()} 
-              </span>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-};
-
-// Component untuk menampilkan pemakaian bahan di produksi
-const ProduksiList = ({ produksiList }: { produksiList: ProduksiUsage[] }) => {
-  const [expanded, setExpanded] = useState(false);
-
-  if (!produksiList || produksiList.length === 0) {
+  if (!pemakaianList || pemakaianList.length === 0) {
     return <span className="text-gray-400 text-sm">-</span>;
   }
 
-  const totalKgs = produksiList.reduce(
-    (sum, p) => sum + (p.Jumlah_Bahan || 0),
-    0,
-  );
+  const totalKgs = pemakaianList.reduce((sum, p) => sum + (p.Jumlah || 0), 0);
 
   return (
     <div>
@@ -143,24 +96,29 @@ const ProduksiList = ({ produksiList }: { produksiList: ProduksiUsage[] }) => {
         onClick={() => setExpanded(!expanded)}
         className="text-xs text-blue-600 hover:underline"
       >
-        {expanded ? "▼" : "▶"} {produksiList.length} produksi (
+        {expanded ? "▼" : "▶"} {pemakaianList.length} pemakaian (
         {totalKgs.toLocaleString()} )
       </button>
       {expanded && (
         <div className="mt-2 space-y-2 max-h-60 overflow-auto">
-          {produksiList.map((prod, idx) => (
+          {pemakaianList.map((item, idx) => (
             <div
               key={idx}
               className="text-xs border-l-2 border-blue-300 pl-2 py-1"
             >
-              <div className="font-medium">
-                ProdID: {prod.ProdID_Bahan || "-"}
-              </div>
-              <div className="text-gray-500">SPK: {prod.SPK || "-"}</div>
+              <div className="font-medium">{item.No_Transaksi || "-"}</div>
+              {item.SPK && item.SPK !== "-" && (
+                <div className="text-gray-500">SPK: {item.SPK}</div>
+              )}
               <div className="text-gray-700 font-medium">
-                Jumlah: {(prod.Jumlah_Bahan || 0).toLocaleString()} 
+                Jumlah: {(item.Jumlah || 0).toLocaleString()} 
               </div>
-              <div className="text-gray-400">PIC: {prod.PIC_Bahan || "-"}</div>
+              {item.Keterangan && item.Keterangan !== "-" && (
+                <div className="text-gray-400 text-[10px]">
+                  {item.Keterangan}
+                </div>
+              )}
+              <div className="text-gray-400">PIC: {item.PIC || "-"}</div>
             </div>
           ))}
         </div>
@@ -266,18 +224,44 @@ const sendTelegramNotification = async (exportData: {
 };
 
 // ============================================
-// KOLOM TABEL (SESUAI FRONTEND)
+// KOLOM TABEL
 // ============================================
 const columns: ColumnDef<TrackingItem>[] = [
   {
     accessorKey: "ItemID_Bahan",
     header: "Kode Bahan",
     size: 100,
-    cell: ({ row }) => (
-      <span className="font-mono text-xs">
-        {row.original.ItemID_Bahan || "-"}
-      </span>
-    ),
+    cell: ({ row }) => {
+      const itemId = row.original.ItemID_Bahan || "-";
+      const itemIdOriginal = row.original.ItemID_Original || "";
+
+      if (itemIdOriginal.includes(", ")) {
+        const parts = itemIdOriginal.split(", ");
+        return (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger>
+                <span className="font-mono text-xs font-bold uppercase cursor-help">
+                  {itemId}
+                </span>
+              </TooltipTrigger>
+              <TooltipContent>
+                <div className="text-xs space-y-1">
+                  <p className="font-semibold">Item ID Asli:</p>
+                  {parts.map((p, i) => (
+                    <div key={i}>• {p}</div>
+                  ))}
+                </div>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        );
+      }
+
+      return (
+        <span className="font-mono text-xs font-bold uppercase">{itemId}</span>
+      );
+    },
   },
   {
     accessorKey: "NamaBahan",
@@ -286,32 +270,162 @@ const columns: ColumnDef<TrackingItem>[] = [
     cell: ({ row }) => row.original.NamaBahan || "-",
   },
   {
+    accessorKey: "Kategori",
+    header: "Kategori",
+    size: 130,
+    cell: ({ row }) => {
+      const kategori = row.original.Kategori || "-";
+      let badgeVariant = "bg-blue-50 text-blue-700 border-blue-200";
+      if (kategori.toUpperCase() === "BAHAN BAKU") {
+        badgeVariant = "bg-green-50 text-green-700 border-green-200";
+      } else if (kategori.toUpperCase() === "BAHAN PENOLONG") {
+        badgeVariant = "bg-yellow-50 text-yellow-700 border-yellow-200";
+      }
+      return (
+        <Badge variant="outline" className={badgeVariant}>
+          {kategori}
+        </Badge>
+      );
+    },
+  },
+  {
     accessorKey: "JenisDokumen",
     header: "Jenis Dokumen",
-    size: 120,
-    cell: ({ row }) => row.original.JenisDokumen || "-",
+    size: 150,
+    cell: ({ row }) => {
+      const text = row.original.JenisDokumen || "-";
+      if (text.includes(" | ")) {
+        const parts = text.split(" | ");
+        return (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger>
+                <Badge
+                  variant="outline"
+                  className="bg-blue-50 text-blue-700 cursor-help"
+                >
+                  {parts.length} jenis
+                </Badge>
+              </TooltipTrigger>
+              <TooltipContent className="max-w-xs">
+                <div className="text-xs space-y-1">
+                  {parts.map((p, i) => (
+                    <div key={i}>• {p}</div>
+                  ))}
+                </div>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        );
+      }
+      return <span className="text-sm">{text}</span>;
+    },
   },
   {
     accessorKey: "NomorBPB",
     header: "No. BPB",
     size: 120,
-    cell: ({ row }) => row.original.NomorBPB || "-",
+    cell: ({ row }) => {
+      const text = row.original.NomorBPB || "-";
+      if (text.includes(", ")) {
+        const parts = text.split(", ");
+        return (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger>
+                <Badge
+                  variant="outline"
+                  className="bg-purple-50 text-purple-700 cursor-help"
+                >
+                  {parts.length} BPB
+                </Badge>
+              </TooltipTrigger>
+              <TooltipContent className="max-w-xs">
+                <div className="text-xs space-y-1">
+                  <p className="font-semibold">Nomor BPB:</p>
+                  {parts.map((p, i) => (
+                    <div key={i}>• {p}</div>
+                  ))}
+                </div>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        );
+      }
+      return <span className="text-sm font-mono">{text}</span>;
+    },
   },
   {
     accessorKey: "TanggalBPB",
     header: "Tgl Masuk",
-    size: 100,
-    cell: ({ row }) => row.original.TanggalBPB || "-",
+    size: 150,
+    cell: ({ row }) => {
+      const text = row.original.TanggalBPB || "-";
+      if (text.includes(", ")) {
+        const parts = text.split(", ");
+        return (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger>
+                <Badge
+                  variant="outline"
+                  className="bg-indigo-50 text-indigo-700 cursor-help"
+                >
+                  {parts.length} tanggal
+                </Badge>
+              </TooltipTrigger>
+              <TooltipContent className="max-w-xs">
+                <div className="text-xs space-y-1">
+                  <p className="font-semibold">Tanggal Masuk:</p>
+                  {parts.map((p, i) => (
+                    <div key={i}>• {p}</div>
+                  ))}
+                </div>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        );
+      }
+      return <span className="text-sm">{text}</span>;
+    },
   },
   {
     accessorKey: "Pemasok",
     header: "Pemasok",
     size: 150,
-    cell: ({ row }) => row.original.Pemasok || "-",
+    cell: ({ row }) => {
+      const text = row.original.Pemasok || "-";
+      if (text.includes(" | ")) {
+        const parts = text.split(" | ");
+        return (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger>
+                <Badge
+                  variant="outline"
+                  className="bg-green-50 text-green-700 cursor-help"
+                >
+                  {parts.length} pemasok
+                </Badge>
+              </TooltipTrigger>
+              <TooltipContent className="max-w-xs">
+                <div className="text-xs space-y-1">
+                  <p className="font-semibold">Pemasok:</p>
+                  {parts.map((p, i) => (
+                    <div key={i}>• {p}</div>
+                  ))}
+                </div>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        );
+      }
+      return <span className="text-sm">{text}</span>;
+    },
   },
   {
     accessorKey: "JumlahMasuk_Kgs",
-    header: "Masuk ()",
+    header: "Masuk ",
     size: 100,
     cell: ({ row }) => (
       <span className="font-medium text-blue-600">
@@ -319,10 +433,11 @@ const columns: ColumnDef<TrackingItem>[] = [
       </span>
     ),
   },
+  // ============ KOLOM STOK AWAL ============
   {
-    id: "stok_awal",
-    header: "Stok Awal",
-    size: 80,
+    accessorKey: "StokAwal",
+    header: "Stok Awal ",
+    size: 100,
     cell: ({ row }) => {
       const stokAwal = row.original.StokAwal || 0;
       return (
@@ -330,7 +445,9 @@ const columns: ColumnDef<TrackingItem>[] = [
           <Tooltip>
             <TooltipTrigger>
               <span
-                className={stokAwal > 0 ? "text-blue-600" : "text-gray-400"}
+                className={
+                  stokAwal > 0 ? "text-blue-600 font-medium" : "text-gray-400"
+                }
               >
                 {stokAwal.toLocaleString()}
               </span>
@@ -343,53 +460,23 @@ const columns: ColumnDef<TrackingItem>[] = [
       );
     },
   },
+  // ==========================================
   {
-    id: "pemakaian",
-    header: "Pemakaian",
-    size: 180,
-    cell: ({ row }) => {
-      const item = row.original;
-      const isOver = item.IsOverUsed || false;
-      const totalTerpakai = item.TotalKgsTerpakai || 0;
-      const totalTersedia = item.TotalStokTersedia || 0;
-      const persentase = item.PersentaseTerpakai || 0;
-      const safePersentase = Math.min(persentase, 100);
-
-      if (totalTerpakai === 0 && totalTersedia === 0) {
-        return (
-          <span className="text-gray-400 text-xs">Belum ada pemakaian</span>
-        );
-      }
-
-      return (
-        <div className="space-y-1">
-          <div className="flex justify-between text-xs">
-            <span className={isOver ? "text-red-600 font-bold" : ""}>
-              {totalTerpakai.toLocaleString()} /{" "}
-              {totalTersedia.toLocaleString()}
-            </span>
-            <span className={isOver ? "text-red-600 font-bold" : ""}>
-              {persentase}%
-            </span>
-          </div>
-          <div className="relative w-full h-2 bg-gray-200 rounded-full overflow-hidden">
-            <div
-              className={`absolute top-0 left-0 h-full rounded-full transition-all ${
-                isOver ? "bg-red-500" : "bg-blue-500"
-              }`}
-              style={{ width: `${safePersentase}%` }}
-            />
-          </div>
-        </div>
-      );
-    },
+    id: "pemakaian_detail",
+    header: "Detail Pemakaian",
+    size: 200,
+    cell: ({ row }) => (
+      <PemakaianList pemakaianList={row.original.DigunakanDiProduksi || []} />
+    ),
   },
   {
-    id: "produksi_detail",
-    header: "Detail Produksi",
-    size: 150,
+    id: "total_terpakai",
+    header: "Total Terpakai ",
+    size: 120,
     cell: ({ row }) => (
-      <ProduksiList produksiList={row.original.DigunakanDiProduksi || []} />
+      <span className="font-medium text-purple-600">
+        {(row.original.TotalKgsTerpakai || 0).toLocaleString()}
+      </span>
     ),
   },
   {
@@ -404,8 +491,8 @@ const columns: ColumnDef<TrackingItem>[] = [
   },
   {
     id: "total_jadi",
-    header: "Total Jadi",
-    size: 80,
+    header: "Total Jadi ",
+    size: 100,
     cell: ({ row }) => (
       <span className="font-medium text-green-600">
         {(row.original.TotalBarangJadi || 0).toLocaleString()}
@@ -437,7 +524,6 @@ export default function TrackingBahanKeJadiPage() {
     total_barang_jadi: 0,
   });
 
-  // User Context
   const { user, isLoading: userLoading } = useUser();
 
   const getUserInfo = useCallback(() => {
@@ -461,6 +547,10 @@ export default function TrackingBahanKeJadiPage() {
       const result = await response.json();
 
       if (result.success) {
+        console.log("📊 Data dari API:", result.data?.length);
+        if (result.data && result.data.length > 0) {
+          console.log("📊 Sample item:", result.data[0]);
+        }
         setData(result.data || []);
         setTgl1(startDate);
         setTgl2(endDate);
@@ -492,7 +582,7 @@ export default function TrackingBahanKeJadiPage() {
   };
 
   // ============================================
-  // FUNGSI EXPORT EXCEL (SIMPEL)
+  // FUNGSI EXPORT EXCEL
   // ============================================
   const exportToExcel = async () => {
     try {
@@ -503,34 +593,30 @@ export default function TrackingBahanKeJadiPage() {
 
       const wb = XLSX.utils.book_new();
 
-      // Header Laporan
       const reportTitle = "LAPORAN TRACKING BAHAN BAKU → BARANG JADI";
       const periode = `Periode: ${format(new Date(tgl1), "dd MMMM yyyy")} - ${format(new Date(tgl2), "dd MMMM yyyy")}`;
       const tanggalCetak = `Tanggal Cetak: ${format(new Date(), "dd MMMM yyyy HH:mm:ss")}`;
       const totalData = `Total Data: ${data.length} item bahan baku`;
 
-      // Header Kolom (SESUAI FRONTEND - Tanpa Status Stok & Over Used)
       const columnHeaders = [
         "No.",
         "Kode Bahan",
         "Nama Bahan",
+        "Kategori",
         "Jenis Dokumen",
         "No. BPB",
         "Tgl Masuk",
         "Pemasok",
-        "Pembelian",
-        "Stok Awal",
-        "Total Tersedia",
-        "Terpakai",
-        "Persentase",
-        "Detail Produksi",
+        "Masuk ",
+        "Stok Awal ",
+        "Detail Pemakaian",
+        "Total Terpakai ",
         "Barang Jadi",
-        "Total Jadi",
+        "Total Jadi ",
       ];
 
-      // Data Rows
       const dataRows = data.map((item, index) => {
-        // Format Barang Jadi dengan rapi - per item di baris baru
+        // Format Barang Jadi
         let barangJadiText = "-";
         if (
           item.MenghasilkanBarangJadi &&
@@ -541,19 +627,17 @@ export default function TrackingBahanKeJadiPage() {
             const jumlah = (bj.Jumlah_Kgs || 0).toLocaleString();
             const spk = bj.SPK || "-";
             const pic = bj.PIC_Hasil || "-";
-            // Format: [1] Nama Barang: 100  | SPK: SPK-001 | PIC: John
             return `[${idx + 1}] ${nama}: ${jumlah}  | SPK: ${spk} | PIC: ${pic}`;
-          }).join("\n"); // Baris baru untuk setiap item
+          }).join("\n");
         }
 
-        // Format Detail Produksi
-        let produksiText = "-";
+        // Format Detail Pemakaian
+        let pemakaianText = "-";
         if (item.DigunakanDiProduksi && item.DigunakanDiProduksi.length > 0) {
-          produksiText = item.DigunakanDiProduksi.map((prod, idx) => {
-            const jumlah = (prod.Jumlah_Bahan || 0).toLocaleString();
-            const spk = prod.SPK || "-";
-            const pic = prod.PIC_Bahan || "-";
-            return `[${idx + 1}] SPK: ${spk} | ${jumlah}  | PIC: ${pic}`;
+          pemakaianText = item.DigunakanDiProduksi.map((p, idx) => {
+            const spk = p.SPK !== "-" ? `SPK: ${p.SPK}` : "";
+            const ket = p.Keterangan !== "-" ? ` | ${p.Keterangan}` : "";
+            return `[${idx + 1}] ${p.No_Transaksi} ${spk} | ${p.Jumlah.toLocaleString()}  | PIC: ${p.PIC}${ket}`;
           }).join("\n");
         }
 
@@ -561,32 +645,26 @@ export default function TrackingBahanKeJadiPage() {
           index + 1,
           item.ItemID_Bahan || "-",
           item.NamaBahan || "-",
+          item.Kategori || "-",
           item.JenisDokumen || "-",
           item.NomorBPB || "-",
           item.TanggalBPB || "-",
           item.Pemasok || "-",
           item.JumlahMasuk_Kgs || 0,
           item.StokAwal || 0,
-          item.TotalStokTersedia || 0,
+          pemakaianText,
           item.TotalKgsTerpakai || 0,
-          `${item.PersentaseTerpakai || 0}%`,
-          produksiText,
           barangJadiText,
           item.TotalBarangJadi || 0,
         ];
       });
 
-      // Hitung Total
       const totalMasuk = data.reduce(
         (sum, item) => sum + (item.JumlahMasuk_Kgs || 0),
         0,
       );
       const totalStokAwal = data.reduce(
         (sum, item) => sum + (item.StokAwal || 0),
-        0,
-      );
-      const totalTersedia = data.reduce(
-        (sum, item) => sum + (item.TotalStokTersedia || 0),
         0,
       );
       const totalTerpakai = data.reduce(
@@ -598,9 +676,8 @@ export default function TrackingBahanKeJadiPage() {
         0,
       );
 
-      // Baris Total
       const totalRows = [
-        [], // Baris kosong
+        [],
         [
           "TOTAL",
           "",
@@ -609,12 +686,11 @@ export default function TrackingBahanKeJadiPage() {
           "",
           "",
           "",
+          "",
           totalMasuk.toLocaleString("id-ID"),
           totalStokAwal.toLocaleString("id-ID"),
-          totalTersedia.toLocaleString("id-ID"),
+          "",
           totalTerpakai.toLocaleString("id-ID"),
-          "",
-          "",
           "",
           totalBarangJadi.toLocaleString("id-ID"),
         ],
@@ -622,81 +698,67 @@ export default function TrackingBahanKeJadiPage() {
         ["*** AKHIR LAPORAN ***"],
       ];
 
-      // Gabungkan semua data
       const wsData = [
         [reportTitle],
         [periode],
         [tanggalCetak],
         [totalData],
-        [], // Baris kosong
+        [],
         columnHeaders,
         ...dataRows,
         ...totalRows,
       ];
 
       const ws = XLSX.utils.aoa_to_sheet(wsData);
+      const lastColIndex = 13;
 
-      // Merge Cells
       if (!ws["!merges"]) ws["!merges"] = [];
-      const lastColIndex = 14; // 15 kolom (0-14)
-
-      // Merge header laporan
       ws["!merges"].push({ s: { r: 0, c: 0 }, e: { r: 0, c: lastColIndex } });
       ws["!merges"].push({ s: { r: 1, c: 0 }, e: { r: 1, c: lastColIndex } });
       ws["!merges"].push({ s: { r: 2, c: 0 }, e: { r: 2, c: lastColIndex } });
       ws["!merges"].push({ s: { r: 3, c: 0 }, e: { r: 3, c: lastColIndex } });
-
-      // Merge baris TOTAL
       ws["!merges"].push({
         s: { r: wsData.length - 3, c: 0 },
-        e: { r: wsData.length - 3, c: 6 },
+        e: { r: wsData.length - 3, c: 7 },
       });
-
-      // Merge akhir laporan
       ws["!merges"].push({
         s: { r: wsData.length - 1, c: 0 },
         e: { r: wsData.length - 1, c: lastColIndex },
       });
 
-      // Lebar Kolom
       ws["!cols"] = [
-        { wch: 6 }, // No.
-        { wch: 15 }, // Kode Bahan
-        { wch: 30 }, // Nama Bahan
-        { wch: 15 }, // Jenis Dokumen
-        { wch: 15 }, // No. BPB
-        { wch: 15 }, // Tgl Masuk
-        { wch: 25 }, // Pemasok
-        { wch: 15 }, // Masuk ()
-        { wch: 18 }, // Stok Awal ()
-        { wch: 18 }, // Total Tersedia ()
-        { wch: 18 }, // Terpakai ()
-        { wch: 15 }, // Persentase
-        { wch: 60 }, // Detail Produksi
-        { wch: 80 }, // Barang Jadi (diperbesar untuk multi-line)
-        { wch: 18 }, // Total Jadi ()
+        { wch: 6 },
+        { wch: 15 },
+        { wch: 30 },
+        { wch: 15 },
+        { wch: 15 },
+        { wch: 15 },
+        { wch: 15 },
+        { wch: 25 },
+        { wch: 15 },
+        { wch: 15 },
+        { wch: 60 },
+        { wch: 18 },
+        { wch: 80 },
+        { wch: 18 },
       ];
 
-      // Set row heights - penting untuk wrap text
       ws["!rows"] = [
-        { hpt: 30 }, // Baris 1 (judul)
-        { hpt: 20 }, // Baris 2 (periode)
-        { hpt: 20 }, // Baris 3 (tanggal cetak)
-        { hpt: 20 }, // Baris 4 (total data)
-        { hpt: 5 }, // Baris 5 (kosong)
-        { hpt: 25 }, // Baris 6 (header)
+        { hpt: 30 },
+        { hpt: 20 },
+        { hpt: 20 },
+        { hpt: 20 },
+        { hpt: 5 },
+        { hpt: 25 },
       ];
 
-      // Enable wrap text untuk kolom Barang Jadi dan Detail Produksi
-      // (Ini akan membuat teks dengan \n terbaca sebagai new line)
       const range = XLSX.utils.decode_range(ws["!ref"] || "A1");
       for (let R = range.s.r; R <= range.e.r; R++) {
         for (let C = range.s.c; C <= range.e.c; C++) {
           const addr = XLSX.utils.encode_cell({ r: R, c: C });
           if (!ws[addr]) continue;
           if (!ws[addr].s) ws[addr].s = {};
-          // Apply wrap text for columns: Detail Produksi (col 12) dan Barang Jadi (col 13)
-          if (C === 12 || C === 13) {
+          if (C === 10 || C === 12) {
             ws[addr].s.alignment = { wrapText: true, vertical: "top" };
           } else {
             ws[addr].s.alignment = { wrapText: false, vertical: "center" };
@@ -705,11 +767,9 @@ export default function TrackingBahanKeJadiPage() {
       }
 
       XLSX.utils.book_append_sheet(wb, ws, "Tracking Bahan");
-
       const fileName = `TRACKING_BAHAN_${tgl1}_${tgl2}.xlsx`;
       XLSX.writeFile(wb, fileName);
 
-      // Kirim notifikasi Telegram
       await sendTelegramNotification({
         fileName,
         periode: `${format(new Date(tgl1), "dd MMM yyyy")} - ${format(new Date(tgl2), "dd MMM yyyy")}`,
@@ -727,11 +787,6 @@ export default function TrackingBahanKeJadiPage() {
     }
   };
 
-  // ============================================
-  // RENDER
-  // ============================================
-
-  // Loading state
   if (userLoading) {
     return (
       <div className="container mx-auto px-4 py-8">
@@ -745,7 +800,6 @@ export default function TrackingBahanKeJadiPage() {
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="flex flex-col gap-6">
-        {/* Header */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
             <h1 className="text-3xl font-bold">
@@ -778,7 +832,6 @@ export default function TrackingBahanKeJadiPage() {
           </div>
         </div>
 
-        {/* Filter */}
         <FilterTanggal
           onFilter={handleFilter}
           isLoading={loading}
@@ -786,7 +839,6 @@ export default function TrackingBahanKeJadiPage() {
           defaultTgl2={tgl2}
         />
 
-        {/* Info Card - Panduan */}
         <Card className="border-2 border-dashed border-muted-foreground/20">
           <CardHeader className="pb-3">
             <CardTitle className="text-lg flex items-center gap-2">
@@ -808,9 +860,9 @@ export default function TrackingBahanKeJadiPage() {
               <div className="flex items-start gap-2 p-2 rounded-lg bg-green-50">
                 <PlusCircle className="h-4 w-4 text-green-600 mt-0.5" />
                 <div>
-                  <p className="font-medium text-sm">Masuk & Stok</p>
+                  <p className="font-medium text-sm">Masuk & Stok Awal</p>
                   <p className="text-xs text-muted-foreground">
-                    Jumlah masuk, stok awal, dan total tersedia
+                    Jumlah pemasukan dan stok awal 
                   </p>
                 </div>
               </div>
@@ -819,14 +871,14 @@ export default function TrackingBahanKeJadiPage() {
                 <div>
                   <p className="font-medium text-sm">Pemakaian</p>
                   <p className="text-xs text-muted-foreground">
-                    Total terpakai dan persentase pemakaian
+                    Total dan detail pemakaian di produksi 
                   </p>
                 </div>
               </div>
               <div className="flex items-start gap-2 p-2 rounded-lg bg-orange-50">
                 <TrendingUp className="h-4 w-4 text-orange-600 mt-0.5" />
                 <div>
-                  <p className="font-medium text-sm">Detail Produksi</p>
+                  <p className="font-medium text-sm">Detail Pemakaian</p>
                   <p className="text-xs text-muted-foreground">
                     Rincian pemakaian di setiap produksi
                   </p>
@@ -837,16 +889,14 @@ export default function TrackingBahanKeJadiPage() {
                 <div>
                   <p className="font-medium text-sm">Barang Jadi</p>
                   <p className="text-xs text-muted-foreground">
-                    Hasil produksi dari bahan baku
+                    Hasil produksi dari bahan baku 
                   </p>
                 </div>
               </div>
             </div>
-        
           </CardContent>
         </Card>
 
-        {/* Summary Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
           <Card>
             <CardHeader className="pb-2">
@@ -863,9 +913,8 @@ export default function TrackingBahanKeJadiPage() {
             </CardHeader>
             <CardContent>
               <p className="text-2xl font-bold text-blue-600">
-                {(summary.total_jumlah_masuk || 0).toLocaleString()}
+                {(summary.total_jumlah_masuk || 0).toLocaleString()} 
               </p>
-              <p className="text-xs text-muted-foreground"></p>
             </CardContent>
           </Card>
           <Card>
@@ -876,9 +925,8 @@ export default function TrackingBahanKeJadiPage() {
             </CardHeader>
             <CardContent>
               <p className="text-2xl font-bold text-purple-600">
-                {(summary.total_terpakai || 0).toLocaleString()}
+                {(summary.total_terpakai || 0).toLocaleString()} 
               </p>
-              <p className="text-xs text-muted-foreground"></p>
             </CardContent>
           </Card>
           <Card>
@@ -887,14 +935,12 @@ export default function TrackingBahanKeJadiPage() {
             </CardHeader>
             <CardContent>
               <p className="text-2xl font-bold text-green-600">
-                {(summary.total_barang_jadi || 0).toLocaleString()}
+                {(summary.total_barang_jadi || 0).toLocaleString()} 
               </p>
-              <p className="text-xs text-muted-foreground"></p>
             </CardContent>
           </Card>
         </div>
 
-        {/* Error Alert */}
         {error && (
           <Alert variant="destructive">
             <AlertCircle className="h-4 w-4" />
@@ -902,7 +948,6 @@ export default function TrackingBahanKeJadiPage() {
           </Alert>
         )}
 
-        {/* Data Table */}
         <Card>
           <CardContent className="p-6">
             {loading ? (

@@ -142,41 +142,73 @@ export type ProduksiType = {
 };
 
 // lib/types/tracking-pemasukan.ts
+
+// ============================================
+// TYPE UNTUK PEMAKAIAN PRODUKSI (Versi Lama)
+// ============================================
 export interface ProduksiUsage {
-  No_Produksi: string;
-  Tanggal_Produksi: string | null;
-  Departemen: string;
-  Tipe_Produksi: 'B' | 'H';
+  ProdID_Bahan: string;
   SPK: string;
-  Nama_PO: string;
-  Jumlah_Bags: number;
-  Jumlah_Kgs: number;
-  Kategori: string;
-  PIC_Produksi: string;
-  Keterangan: string;
+  Tanggal_Produksi: string | null;
+  Jumlah_Bahan: number;
+  PIC_Bahan: string;
 }
 
-export interface TrackingPemasukanItem {
-  // Data Pemasukan
+
+
+// lib/types/tracking-pemasukan.ts
+
+export interface PemakaianDetail {
+  No_Transaksi: string;
+  SPK: string;
+  Tanggal: string;
+  Jumlah: number;
+  PIC: string;
+  Sumber: "PRODUKSI" | "OPNAME";
+  Keterangan: string;
+  ItemID_Original?: string;
+}
+
+export interface BarangJadi {
+  ProdID_Hasil: string;
   ItemID: string;
   NamaBarang: string;
-  JenisDokPabean: string;
-  NomorDokPabean: string;
-  TanggalDokPabean: string;
+  Jumlah_Kgs: number;
+  Tanggal_Produksi: string;
+  SPK: string;
+  PIC_Hasil: string;
+}
+
+export interface TrackingItem {
+  ItemID_Bahan: string;
+  ItemID_Original: string;
+  NamaBahan: string;
+  Kategori: string;
+  JenisDokumen: string;
   NomorBPB: string;
-  TanggalBPB: string | null;
+  TanggalBPB: string | null; // Berisi SEMUA tanggal masuk (gabungan)
   Pemasok: string;
-  JumlahMasuk: number;
-  Satuan: string;
-  Currency: string;
-  NilaiBarang: number;
-  Nopol: string;
-  NoInvoice: string;
-  
-  // Data Produksi
-  DigunakanDiProduksi: ProduksiUsage[];
-  
-  // Status
-  Status: string;
-  JumlahProduksi: number;
+  JumlahMasuk_Kgs: number;
+  JumlahPemasukan: number;
+  StokAwal: number;
+  TotalStokTersedia: number;
+  StockSekarang: number;
+  DigunakanDiProduksi: PemakaianDetail[];
+  TotalKgsTerpakai: number;
+  PersentaseTerpakai: number;
+  PemakaianProduksi: PemakaianDetail[];
+  PemakaianOpname: PemakaianDetail[];
+  TotalProduksi: number;
+  TotalOpname: number;
+  MenghasilkanBarangJadi: BarangJadi[];
+  TotalBarangJadi: number;
+  StatusStock: string;
+  StatusBg: string;
+  IsOverUsed: boolean;
+  HasPemakaian: boolean;
+  HasPemakaianProduksi: boolean;
+  HasPemakaianOpname: boolean;
+  JumlahPemakaian: number;
+  JumlahPemakaianProduksi: number;
+  JumlahPemakaianOpname: number;
 }
