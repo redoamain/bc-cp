@@ -2,7 +2,7 @@
 // app/pemasukan/page.tsx
 "use client";
 
-import { useEffect, useState, useMemo, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import * as XLSX from "xlsx";
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
@@ -20,7 +20,6 @@ import {
   FileSpreadsheet,
   Package,
   DollarSign,
-  Bug,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useUser } from "../../contexts/UserContext";
@@ -29,45 +28,141 @@ const formatDate = (date: Date | string) => {
   return format(new Date(date), "dd MMM yyyy", { locale: id });
 };
 
-const sendTelegramNotification = async (exportData: {
-  fileName: string;
-  periode: string;
-  totalData: number;
-  totalUSD: number;
-  totalIDR: number;
-  totalJumlah: number;
+// Fungsi untuk mengirim notifikasi Telegram (async, tidak blocking)
+const sendTelegramNotification = async (data: {
+  type: "export" | "empty_data_check";
+  periode?: string;
+  totalData?: number;
+  totalUSD?: number;
+  totalIDR?: number;
+  totalJumlah?: number;
+  fileName?: string;
   userAgent?: string;
   userName?: string;
   userBagian?: string;
+  emptyFields?: {
+    field: string;
+    count: number;
+    examples: any[];
+  }[];
+  emptyDataCount?: number;
+  totalDataChecked?: number;
 }) => {
   try {
-    const response = await fetch("/api/notif", {
+    let message = "";
+
+    if (data.type === "export") {
+      message =
+        `📊 |LAPORAN PEMASUKAN DIEXPORT\n\n` +
+        `📁 |File: ${data.fileName || "Unknown"}\n` +
+        `📅 |Periode: ${data.periode || "Unknown"}\n` +
+        `📦 |Total Data: ${data.totalData || 0} transaksi\n` +
+        `📦 |Total Quantity: ${(data.totalJumlah || 0).toLocaleString()}\n` +
+        `💵 |Total USD: ${new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(data.totalUSD || 0)}\n` +
+        `💰 |Total IDR: ${new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR" }).format(data.totalIDR || 0)}\n` +
+        `🕐 |Waktu Export: ${format(new Date(), "dd MMM yyyy HH:mm:ss", { locale: id })}\n` +
+        `👤 |Diekspor oleh: ${data.userName || "Unknown"} ${data.userBagian ? `(${data.userBagian})` : ""}\n` +
+        `💻 |User Agent: ${data.userAgent || "Unknown"}`;
+    } else if (data.type === "empty_data_check") {
+      message =
+        `⚠️ |PENGECEKAN DATA KOSONG\n\n` +
+        `📅 |Periode: ${data.periode || "Unknown"}\n` +
+        `📊 |Total Data Dicek: ${data.totalDataChecked || 0} transaksi\n` +
+        `🚨 |Data Bermasalah: ${data.emptyDataCount || 0} transaksi\n\n` +
+        `📋 |DETAIL FIELD KOSONG:\n`;
+
+      if (data.emptyFields && data.emptyFields.length > 0) {
+        data.emptyFields.forEach((field) => {
+          message += `\n• ${field.field}: ${field.count} data kosong\n`;
+          if (field.examples && field.examples.length > 0) {
+            message += `  Contoh No. Dokumen: ${field.examples
+              .slice(0, 3)
+              .map((ex: any) => ex.NomorDokPabean || "-")
+              .join(", ")}\n`;
+          }
+        });
+      }
+
+      message += `\n🕐 |Waktu Pengecekan: ${format(new Date(), "dd MMM yyyy HH:mm:ss", { locale: id })}\n`;
+      message += `👤 |Dicek oleh: ${data.userName || "Unknown"} ${data.userBagian ? `(${data.userBagian})` : ""}`;
+    }
+
+    // Kirim notifikasi tanpa blocking
+    fetch("/api/notif", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        message:
-          `📊 |LAPORAN PEMASUKAN DIEXPORT\n\n` +
-          `📁 |File: ${exportData.fileName}\n` +
-          `📅 |Periode: ${exportData.periode}\n` +
-          `📦 |Total Data: ${exportData.totalData} transaksi\n` +
-          `📦 |Total Quantity: ${exportData.totalJumlah.toLocaleString()}\n` +
-          `💵 |Total USD: ${new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(exportData.totalUSD)}\n` +
-          `💰 |Total IDR: ${new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR" }).format(exportData.totalIDR)}\n` +
-          `🕐 |Waktu Export: ${format(new Date(), "dd MMM yyyy HH:mm:ss", { locale: id })}\n` +
-          `👤 |Diekspor oleh: ${exportData.userName || "Unknown"} ${exportData.userBagian ? `(${exportData.userBagian})` : ""}\n` +
-          `💻 |User Agent:* ${exportData.userAgent || "Unknown"}`,
+        message: message,
         parseMode: "Markdown",
       }),
+    }).catch((error) => {
+      console.error("Error sending Telegram notification:", error);
     });
-
-    if (!response.ok) {
-      console.error("Gagal mengirim notifikasi Telegram");
-    }
   } catch (error) {
-    console.error("Error sending Telegram notification:", error);
+    console.error("Error in sendTelegramNotification:", error);
   }
+};
+
+// Fungsi untuk mengecek data kosong (dioptimasi)
+const checkEmptyFields = (data: PemasukanType[]) => {
+  if (!data || data.length === 0) {
+    return [];
+  }
+
+  const fieldsToCheck = [
+    { key: "NomorDokPabean", label: "No. Dokumen" },
+    { key: "TanggalDokPabean", label: "Tgl Dokumen" },
+    { key: "NomorBPB", label: "No. BPB" },
+    { key: "TanggalBPB", label: "Tgl BPB" },
+    { key: "PemasokPengirim", label: "Pemasok/Pengirim" },
+    { key: "kodebarang", label: "Kode Barang" },
+    { key: "Namabarang", label: "Nama Barang" },
+    { key: "Jumlah", label: "Jumlah" },
+    { key: "Satuan", label: "Satuan" },
+    { key: "NilaiBarang", label: "Nilai Barang" },
+    { key: "CURR", label: "Currency" },
+    { key: "Nopol", label: "No. Container/Plate" },
+  ];
+
+  const emptyFields = [];
+
+  // Optimasi: gunakan for loop biasa untuk performance
+  for (const field of fieldsToCheck) {
+    const key = field.key as keyof PemasukanType;
+    let count = 0;
+    const examples = [];
+
+    // Single pass untuk menghitung dan mengambil contoh
+    for (const item of data) {
+      const value = item[key];
+      const isEmpty =
+        !value ||
+        value === "" ||
+        value === 0 ||
+        value === null ||
+        value === undefined;
+
+      if (isEmpty) {
+        count++;
+        if (examples.length < 5) {
+          examples.push(item);
+        }
+      }
+    }
+
+    if (count > 0) {
+      emptyFields.push({
+        field: field.label,
+        key: field.key,
+        count,
+        examples,
+      });
+    }
+  }
+
+  return emptyFields;
 };
 
 export default function PemasukanPage() {
@@ -87,69 +182,137 @@ export default function PemasukanPage() {
   const [tgl2, setTgl2] = useState(defaultTgl2);
   const [jenisFilter, setJenisFilter] = useState("");
 
+  // Ref untuk mencegah multiple fetch
+  const isFetchingRef = useRef(false);
+  const isCheckingEmptyRef = useRef(false);
+
   // Menggunakan UserContext
   const { user, isLoading: userLoading } = useUser();
 
-  // Mendapatkan informasi user dengan berbagai kemungkinan field name
+  // Mendapatkan informasi user
   const getUserInfo = useCallback(() => {
     if (!user) return { name: "Unknown", bagian: "Unknown" };
-
-    // Coba berbagai kemungkinan field name
     const name =
       user.Nama || user.name || user.UserName || user.username || "Unknown";
     const bagian = user.Bagian || user.role || user.jabatan || "Unknown";
-
     return { name, bagian };
   }, [user]);
 
   const userInfo = getUserInfo();
 
-  const fetchData = useCallback(async (tglAwal: string, tglAkhir: string) => {
-    setLoading(true);
-    setError(null);
+  // Fungsi untuk melakukan pengecekan data kosong (async, tidak blocking)
+  const checkAndNotifyEmptyData = useCallback(
+    async (
+      dataToCheck: PemasukanType[] | undefined,
+      periodStart: string,
+      periodEnd: string,
+    ) => {
+      // Prevent multiple concurrent checks
+      if (isCheckingEmptyRef.current) return;
+      isCheckingEmptyRef.current = true;
 
-    try {
-      console.log("📅 Fetching data for period:", tglAwal, "to", tglAkhir);
+      try {
+        // Cek apakah data valid
+        if (!dataToCheck || dataToCheck.length === 0) {
+          isCheckingEmptyRef.current = false;
+          return;
+        }
 
-      const response = await getPemasukan(tglAwal, tglAkhir);
+        // Gunakan setTimeout untuk tidak blocking UI
+        await new Promise((resolve) => setTimeout(resolve, 100));
 
-      console.log("📦 API Response:", response);
+        const emptyFieldsResult = checkEmptyFields(dataToCheck);
+        const totalEmptyData = emptyFieldsResult.reduce(
+          (sum, field) => sum + field.count,
+          0,
+        );
 
-      if (response.success && response.data) {
-        setData(response.data);
-        setFilteredData(response.data);
-        setTgl1(tglAwal);
-        setTgl2(tglAkhir);
-      } else {
-        setError(response.error || "Gagal mengambil data");
+        if (emptyFieldsResult.length > 0) {
+          // Kirim notifikasi di background
+          await sendTelegramNotification({
+            type: "empty_data_check",
+            periode: `${formatDate(periodStart)} - ${formatDate(periodEnd)}`,
+            totalDataChecked: dataToCheck.length,
+            emptyDataCount: totalEmptyData,
+            emptyFields: emptyFieldsResult,
+            userName: userInfo.name,
+            userBagian: userInfo.bagian,
+            userAgent: navigator.userAgent,
+          });
+        } else {
+          console.log("✅ Tidak ada data kosong pada periode ini");
+        }
+      } catch (error) {
+        console.error("Error checking empty data:", error);
+      } finally {
+        isCheckingEmptyRef.current = false;
+      }
+    },
+    [userInfo],
+  );
+
+  const fetchData = useCallback(
+    async (tglAwal: string, tglAkhir: string) => {
+      // Prevent multiple concurrent fetches
+      if (isFetchingRef.current) return;
+      isFetchingRef.current = true;
+
+      setLoading(true);
+      setError(null);
+
+      try {
+        console.log("📅 Fetching data for period:", tglAwal, "to", tglAkhir);
+
+        const response = await getPemasukan(tglAwal, tglAkhir);
+
+        console.log("📦 API Response:", response);
+
+        if (response.success && response.data) {
+          // Pastikan response.data adalah array
+          const responseData = response.data || [];
+          setData(responseData);
+          setFilteredData(responseData);
+          setTgl1(tglAwal);
+          setTgl2(tglAkhir);
+
+          // Lakukan pengecekan data kosong di background (tidak blocking UI)
+          // Gunakan requestAnimationFrame atau setTimeout untuk defer
+          requestAnimationFrame(() => {
+            checkAndNotifyEmptyData(responseData, tglAwal, tglAkhir);
+          });
+        } else {
+          setError(response.error || "Gagal mengambil data");
+          setData([]);
+          setFilteredData([]);
+        }
+      } catch (err) {
+        console.error("❌ Error fetching data:", err);
+        setError("Terjadi kesalahan saat mengambil data");
         setData([]);
         setFilteredData([]);
+      } finally {
+        setLoading(false);
+        isFetchingRef.current = false;
       }
-    } catch (err) {
-      console.error("❌ Error fetching data:", err);
-      setError("Terjadi kesalahan saat mengambil data");
-      setData([]);
-      setFilteredData([]);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+    },
+    [checkAndNotifyEmptyData],
+  );
 
   // Initial fetch
   useEffect(() => {
     fetchData(defaultTgl1, defaultTgl2);
-  }, [fetchData]);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Apply filter when jenisFilter changes
+  // Apply filter when jenisFilter changes (optimasi)
   useEffect(() => {
-    if (jenisFilter) {
+    if (jenisFilter && data && data.length > 0) {
       const filtered = data.filter(
         (item) =>
           item.JenisDokPabean?.toLowerCase() === jenisFilter.toLowerCase(),
       );
       setFilteredData(filtered);
     } else {
-      setFilteredData(data);
+      setFilteredData(data || []);
     }
   }, [jenisFilter, data]);
 
@@ -157,48 +320,35 @@ export default function PemasukanPage() {
     fetchData(tglAwal, tglAkhir);
   };
 
-  const totalNilai = filteredData.reduce(
-    (sum, item) => sum + (item.NilaiBarang || 0),
-    0,
-  );
   const totalJumlah = filteredData.reduce(
     (sum, item) => sum + (item.Jumlah || 0),
     0,
   );
 
-  // Fungsi export dengan header laporan
+  // Fungsi export
   const exportToExcel = async () => {
     try {
-      console.log("Exporting data...", filteredData.length);
-
       if (filteredData.length === 0) {
         alert("Tidak ada data untuk diexport");
         return;
       }
 
-      // Buat workbook baru
       const wb = XLSX.utils.book_new();
-
-      // Buat worksheet
       let ws: XLSX.WorkSheet;
 
-      // Data untuk header laporan
       const reportTitle = "LAPORAN PEMASUKAN BARANG";
       const periode = `Periode: ${formatDate(tgl1)} - ${formatDate(tgl2)}`;
       const tanggalCetak = `Tanggal Cetak: ${format(new Date(), "dd MMMM yyyy HH:mm")}`;
-      // const dieksporOleh = `Diekspor oleh: ${userInfo.name} (${userInfo.bagian})`; // Menggunakan info dari context
       const totalData = `Total Data: ${filteredData.length} transaksi`;
 
-      // Header laporan (5 baris pertama)
       const headerRows = [
         [reportTitle],
         [periode],
         [tanggalCetak],
         [totalData],
-        [], // Baris kosong
+        [],
       ];
 
-      // Header kolom
       const columnHeaders = [
         "No.",
         "Jenis Dokumen",
@@ -214,10 +364,8 @@ export default function PemasukanPage() {
         "Curr",
         "Nilai Barang",
         "No. Container / Plate Number",
-        // "No. Invoice",
       ];
 
-      // Data rows
       const dataRows = filteredData.map((item, index) => [
         index + 1,
         item.JenisDokPabean || "-",
@@ -235,82 +383,62 @@ export default function PemasukanPage() {
         item.CURR || "USD",
         item.NilaiBarang || 0,
         item.Nopol || "-",
-        // item.NoInvoice || "-",
       ]);
 
-      // Gabungkan semua data
-      const wsData = [
-        ...headerRows,
-        columnHeaders,
-        ...dataRows,
-        [], // Baris kosong
-      ];
-
-      // Buat worksheet dari data
-      // eslint-disable-next-line prefer-const
+      const wsData = [...headerRows, columnHeaders, ...dataRows, []];
       ws = XLSX.utils.aoa_to_sheet(wsData);
 
-      // Merge cells untuk header laporan (baris 1-5, kolom A-O)
       if (!ws["!merges"]) ws["!merges"] = [];
-
-      // Merge untuk judul laporan (baris 1)
       ws["!merges"].push({ s: { r: 0, c: 0 }, e: { r: 0, c: 14 } });
-      // Merge untuk periode (baris 2)
       ws["!merges"].push({ s: { r: 1, c: 0 }, e: { r: 1, c: 14 } });
-      // Merge untuk tanggal cetak (baris 3)
       ws["!merges"].push({ s: { r: 2, c: 0 }, e: { r: 2, c: 14 } });
-      // Merge untuk diekspor oleh (baris 4)
       ws["!merges"].push({ s: { r: 3, c: 0 }, e: { r: 3, c: 14 } });
-      // Merge untuk total data (baris 5)
       ws["!merges"].push({ s: { r: 4, c: 0 }, e: { r: 4, c: 14 } });
-      // Merge untuk akhir laporan
       ws["!merges"].push({
         s: { r: wsData.length - 1, c: 0 },
         e: { r: wsData.length - 1, c: 14 },
       });
 
-      // Style untuk header (akan diterapkan di Excel)
-      // Atur lebar kolom
-      const wscols = [
-        { wch: 5 }, // No.
-        { wch: 15 }, // Jenis Dokumen
-        { wch: 15 }, // No. Dokumen
-        { wch: 12 }, // Tgl Dokumen
-        { wch: 10 }, // No. BPB
-        { wch: 12 }, // Tgl BPB
-        { wch: 35 }, // Pemasok/Pengirim
-        { wch: 15 }, // Kode Barang
-        { wch: 45 }, // Nama Barang
-        { wch: 12 }, // Jumlah
-        { wch: 8 }, // Satuan
-        { wch: 8 }, // Curr
-        { wch: 18 }, // Nilai Barang
-        { wch: 15 }, // No. Container
-        { wch: 15 }, // No. Invoice
+      ws["!cols"] = [
+        { wch: 5 },
+        { wch: 15 },
+        { wch: 15 },
+        { wch: 12 },
+        { wch: 10 },
+        { wch: 12 },
+        { wch: 35 },
+        { wch: 15 },
+        { wch: 45 },
+        { wch: 12 },
+        { wch: 8 },
+        { wch: 8 },
+        { wch: 18 },
+        { wch: 15 },
       ];
-      ws["!cols"] = wscols;
 
-      // Set row heights (opsional)
       ws["!rows"] = [
-        { hpt: 30 }, // Baris 1 (judul) - tinggi 30 points
-        { hpt: 20 }, // Baris 2 (periode)
-        { hpt: 20 }, // Baris 3 (tanggal cetak)
-        { hpt: 20 }, // Baris 5 (total data)
-        { hpt: 5 }, // Baris 6 (baris kosong)
-        { hpt: 25 }, // Baris 7 (header kolom)
+        { hpt: 30 },
+        { hpt: 20 },
+        { hpt: 20 },
+        { hpt: 20 },
+        { hpt: 5 },
+        { hpt: 25 },
       ];
 
-      // Tambahkan worksheet ke workbook
       XLSX.utils.book_append_sheet(wb, ws, "Pemasukan");
-
-      // Download file
       const fileName = `LAPORAN_PEMASUKAN_${tgl1}_${tgl2}.xlsx`;
       XLSX.writeFile(wb, fileName);
 
-      console.log("Export successful:", fileName);
+      const totalUSD = filteredData
+        .filter((item) => item.CURR === "USD")
+        .reduce((sum, item) => sum + (item.NilaiBarang || 0), 0);
 
-      // Kirim notifikasi ke Telegram dengan informasi user dari context
+      const totalIDR = filteredData
+        .filter((item) => item.CURR === "IDR")
+        .reduce((sum, item) => sum + (item.NilaiBarang || 0), 0);
+
       await sendTelegramNotification({
+        type: "export",
         fileName,
         periode: `${formatDate(tgl1)} - ${formatDate(tgl2)}`,
         totalData: filteredData.length,
@@ -341,7 +469,6 @@ export default function PemasukanPage() {
   const countUSD = filteredData.filter((item) => item.CURR === "USD").length;
   const countIDR = filteredData.filter((item) => item.CURR === "IDR").length;
 
-  // Loading state untuk user
   if (userLoading) {
     return (
       <div className="container mx-auto px-4 py-8">
@@ -355,7 +482,7 @@ export default function PemasukanPage() {
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="flex flex-col gap-6">
-        {/* Header dengan informasi user */}
+        {/* Header */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
             <h1 className="text-3xl font-bold">Data Pemasukan</h1>
@@ -366,7 +493,6 @@ export default function PemasukanPage() {
             <p className="text-xs text-muted-foreground mt-1">
               Total data: {data.length} item
             </p>
-           
           </div>
           <div className="flex gap-2">
             <Button
@@ -399,7 +525,7 @@ export default function PemasukanPage() {
           defaultTgl2={tgl2}
         />
 
-        {/* Summary Cards (tetap sama) */}
+        {/* Summary Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -434,11 +560,10 @@ export default function PemasukanPage() {
           </Card>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Card USD */}
             <Card>
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="text-sm font-medium text-muted-foreground">
-                  Total Transaksi dengan CUR USD
+                  Total USD
                 </CardTitle>
                 <DollarSign className="h-4 w-4 text-blue-500" />
               </CardHeader>
@@ -464,11 +589,10 @@ export default function PemasukanPage() {
               </CardContent>
             </Card>
 
-            {/* Card IDR */}
             <Card>
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="text-sm font-medium text-muted-foreground">
-                  Total Transaksi dengan CUR IDR
+                  Total IDR
                 </CardTitle>
                 <DollarSign className="h-4 w-4 text-green-500" />
               </CardHeader>
