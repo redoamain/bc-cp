@@ -173,62 +173,70 @@ export default function LogPage() {
         />
 
         {/* Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <Card className="border-l-4 border-l-blue-500">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <Card className="border border-slate-200/80 shadow-xs bg-white">
+            <CardHeader className="flex flex-row items-center justify-between pb-2 pt-4 px-4.5">
+              <CardTitle className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
                 Total Log
               </CardTitle>
-              <FileText className="h-4 w-4 text-blue-500" />
+              <div className="w-7 h-7 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600 border border-blue-100">
+                <FileText className="h-3.5 w-3.5" />
+              </div>
             </CardHeader>
-            <CardContent>
-              <p className="text-2xl font-bold">{data.length}</p>
-              <p className="text-xs text-muted-foreground mt-1">
-                Jumlah aktivitas
+            <CardContent className="px-4.5 pb-4 pt-0">
+              <p className="text-2xl font-bold tracking-tight text-slate-900">{data.length}</p>
+              <p className="text-xs text-slate-500 mt-1">
+                Jumlah rekaman aktivitas
               </p>
             </CardContent>
           </Card>
 
-          <Card className="border-l-4 border-l-green-500">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Unique Users
+          <Card className="border border-slate-200/80 shadow-xs bg-white">
+            <CardHeader className="flex flex-row items-center justify-between pb-2 pt-4 px-4.5">
+              <CardTitle className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                Pengguna Aktif
               </CardTitle>
-              <Users className="h-4 w-4 text-green-500" />
+              <div className="w-7 h-7 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-600 border border-emerald-100">
+                <Users className="h-3.5 w-3.5" />
+              </div>
             </CardHeader>
-            <CardContent>
-              <p className="text-2xl font-bold">{uniqueUsers}</p>
-              <p className="text-xs text-muted-foreground mt-1">
-                User yang aktif
+            <CardContent className="px-4.5 pb-4 pt-0">
+              <p className="text-2xl font-bold tracking-tight text-slate-900">{uniqueUsers}</p>
+              <p className="text-xs text-slate-500 mt-1">
+                User yang bertransaksi
               </p>
             </CardContent>
           </Card>
 
-          <Card className="border-l-4 border-l-purple-500">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
+          <Card className="border border-slate-200/80 shadow-xs bg-white">
+            <CardHeader className="flex flex-row items-center justify-between pb-2 pt-4 px-4.5">
+              <CardTitle className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
                 Total KGS
               </CardTitle>
-              <Package className="h-4 w-4 text-purple-500" />
+              <div className="w-7 h-7 rounded-lg bg-purple-50 flex items-center justify-center text-purple-600 border border-purple-100">
+                <Package className="h-3.5 w-3.5" />
+              </div>
             </CardHeader>
-            <CardContent>
-              <p className="text-2xl font-bold">{totalKGS.toLocaleString()}</p>
-              <p className="text-xs text-muted-foreground mt-1">
-                Total berat/quantity
+            <CardContent className="px-4.5 pb-4 pt-0">
+              <p className="text-2xl font-bold tracking-tight text-slate-900">{totalKGS.toLocaleString()}</p>
+              <p className="text-xs text-slate-500 mt-1">
+                Total berat / kuantitas
               </p>
             </CardContent>
           </Card>
 
-          <Card className="border-l-4 border-l-orange-500">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Unique Items
+          <Card className="border border-slate-200/80 shadow-xs bg-white">
+            <CardHeader className="flex flex-row items-center justify-between pb-2 pt-4 px-4.5">
+              <CardTitle className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                Item Unik
               </CardTitle>
-              <Clock className="h-4 w-4 text-orange-500" />
+              <div className="w-7 h-7 rounded-lg bg-amber-50 flex items-center justify-center text-amber-600 border border-amber-100">
+                <Clock className="h-3.5 w-3.5" />
+              </div>
             </CardHeader>
-            <CardContent>
-              <p className="text-2xl font-bold">{uniqueItems}</p>
-              <p className="text-xs text-muted-foreground mt-1">Item berbeda</p>
+            <CardContent className="px-4.5 pb-4 pt-0">
+              <p className="text-2xl font-bold tracking-tight text-slate-900">{uniqueItems}</p>
+              <p className="text-xs text-slate-500 mt-1">Total jenis barang berbeda</p>
             </CardContent>
           </Card>
         </div>
@@ -241,13 +249,13 @@ export default function LogPage() {
         )}
 
         {/* DataTable Log */}
-        <Card className="overflow-hidden p-4">
-          <CardContent className="p-0">
+        <Card className="border border-slate-200/80 shadow-xs bg-white overflow-hidden">
+          <CardContent className="p-4 sm:p-6">
             {loading ? (
-              <div className="flex items-center justify-center h-96">
-                <div className="flex flex-col items-center gap-4">
-                  <div className="animate-spin rounded-full h-12 w-12 border-4 border-primary border-t-transparent" />
-                  <p className="text-sm text-muted-foreground">
+              <div className="flex items-center justify-center h-64">
+                <div className="flex flex-col items-center gap-3">
+                  <div className="animate-spin rounded-full h-8 w-8 border-2 border-slate-800 border-t-transparent" />
+                  <p className="text-xs text-slate-500">
                     Memuat data log...
                   </p>
                 </div>

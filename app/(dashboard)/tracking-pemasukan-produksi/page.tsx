@@ -371,105 +371,116 @@ export default function TrackingPemasukanProduksiPage() {
         />
 
         {/* Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-8 gap-3">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-xs font-medium">Total Item</CardTitle>
+        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2.5">
+          <Card className="border border-slate-200/80 shadow-xs bg-white">
+            <CardHeader className="pb-1 pt-3 px-3">
+              <CardTitle className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider truncate">
+                Total Item
+              </CardTitle>
             </CardHeader>
-            <CardContent>
-              <p className="text-xl font-bold">{summary.total_items}</p>
+            <CardContent className="px-3 pb-3 pt-0">
+              <p className="text-lg font-bold tracking-tight text-slate-900">{summary.total_items}</p>
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-xs font-medium">
+          <Card className="border border-slate-200/80 shadow-xs bg-white">
+            <CardHeader className="pb-1 pt-3 px-3">
+              <CardTitle className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider truncate">
                 Sudah Dipakai
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              <p className="text-xl font-bold text-green-600">
+            <CardContent className="px-3 pb-3 pt-0">
+              <p className="text-lg font-bold tracking-tight text-emerald-600">
                 {summary.total_sudah_dipakai}
               </p>
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-xs font-medium">
+          <Card className="border border-slate-200/80 shadow-xs bg-white">
+            <CardHeader className="pb-1 pt-3 px-3">
+              <CardTitle className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider truncate">
                 Belum Dipakai
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              <p className="text-xl font-bold text-yellow-600">
+            <CardContent className="px-3 pb-3 pt-0">
+              <p className="text-lg font-bold tracking-tight text-amber-600">
                 {summary.total_belum_dipakai}
               </p>
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-xs font-medium">Total Masuk</CardTitle>
+          <Card className="border border-slate-200/80 shadow-xs bg-white">
+            <CardHeader className="pb-1 pt-3 px-3">
+              <CardTitle className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider truncate">
+                Total Masuk
+              </CardTitle>
             </CardHeader>
-            <CardContent>
-              <p className="text-sm font-bold text-blue-600">
-                {summary.total_jumlah_masuk?.toLocaleString()} Kgs
+            <CardContent className="px-3 pb-3 pt-0">
+              <p className="text-sm font-bold tracking-tight text-blue-600 truncate">
+                {summary.total_jumlah_masuk?.toLocaleString()} <span className="text-[10px] font-normal text-slate-400">Kgs</span>
               </p>
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-xs font-medium">
+          <Card className="border border-slate-200/80 shadow-xs bg-white">
+            <CardHeader className="pb-1 pt-3 px-3">
+              <CardTitle className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider truncate">
                 Total Terpakai
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              <p className="text-sm font-bold text-purple-600">
-                {summary.total_kgs_dipakai?.toLocaleString()} Kgs
+            <CardContent className="px-3 pb-3 pt-0">
+              <p className="text-sm font-bold tracking-tight text-purple-600 truncate">
+                {summary.total_kgs_dipakai?.toLocaleString()} <span className="text-[10px] font-normal text-slate-400">Kgs</span>
               </p>
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-xs font-medium">
+          <Card className="border border-slate-200/80 shadow-xs bg-white">
+            <CardHeader className="pb-1 pt-3 px-3">
+              <CardTitle className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider truncate">
                 Current Stock
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              <p className="text-sm font-bold text-green-600">
-                {summary.total_current_stock?.toLocaleString()} Kgs
+            <CardContent className="px-3 pb-3 pt-0">
+              <p className="text-sm font-bold tracking-tight text-emerald-600 truncate">
+                {summary.total_current_stock?.toLocaleString()} <span className="text-[10px] font-normal text-slate-400">Kgs</span>
               </p>
             </CardContent>
           </Card>
 
           <Card
             className={
-              summary.items_minus > 0 ? "border-red-300 bg-red-50" : ""
+              summary.items_minus > 0
+                ? "border-rose-200 bg-rose-50/60 shadow-xs"
+                : "border border-slate-200/80 shadow-xs bg-white"
             }
           >
-            <CardHeader className="pb-2">
-              <CardTitle className="text-xs font-medium">Item Minus</CardTitle>
+            <CardHeader className="pb-1 pt-3 px-3">
+              <CardTitle className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider truncate">
+                Item Minus
+              </CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="px-3 pb-3 pt-0">
               <p
-                className={`text-xl font-bold ${summary.items_minus > 0 ? "text-red-600" : "text-gray-600"}`}
+                className={`text-lg font-bold tracking-tight ${summary.items_minus > 0 ? "text-rose-600" : "text-slate-600"}`}
               >
                 {summary.items_minus}
               </p>
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-xs font-medium">Total Nilai</CardTitle>
+          <Card className="border border-slate-200/80 shadow-xs bg-white">
+            <CardHeader className="pb-1 pt-3 px-3">
+              <CardTitle className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider truncate">
+                Total Nilai
+              </CardTitle>
             </CardHeader>
-            <CardContent>
-              <p className="text-xs font-bold text-orange-600">
+            <CardContent className="px-3 pb-3 pt-0">
+              <p className="text-xs font-bold tracking-tight text-slate-900 truncate">
                 {new Intl.NumberFormat("id-ID", {
                   style: "currency",
                   currency: "IDR",
+                  maximumFractionDigits: 0,
                 }).format(summary.total_nilai)}
               </p>
             </CardContent>
@@ -478,14 +489,14 @@ export default function TrackingPemasukanProduksiPage() {
 
         {/* Error Alert */}
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+          <div className="bg-rose-50 border border-rose-200 text-rose-700 px-4 py-3 rounded-lg text-xs">
             {error}
           </div>
         )}
 
         {/* Data Table */}
-        <Card>
-          <CardContent className="p-6">
+        <Card className="border border-slate-200/80 shadow-xs bg-white overflow-hidden">
+          <CardContent className="p-4 sm:p-6">
             {loading ? (
               <div className="flex items-center justify-center h-64">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>

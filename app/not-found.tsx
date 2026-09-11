@@ -1,113 +1,79 @@
 // app/not-found.tsx
 "use client";
 
-import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Home, ArrowLeft, Search } from "lucide-react";
+import { ArrowLeft, Home, FileQuestion } from "lucide-react";
 
 export default function NotFound() {
   const router = useRouter();
-  const [countdown, setCountdown] = useState(10);
-  const redirectTriggered = useRef(false);
-
-  useEffect(() => {
-    if (redirectTriggered.current) return;
-
-    const timer = setInterval(() => {
-      setCountdown((prev) => {
-        const newCount = prev - 1;
-
-        if (newCount <= 0 && !redirectTriggered.current) {
-          redirectTriggered.current = true;
-          setTimeout(() => {
-            router.push("/");
-          }, 0);
-          return 0;
-        }
-        return newCount;
-      });
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, [router]);
+  const currentYear = new Date().getFullYear();
 
   return (
-    <div className="min-h-screen bg-linear-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-4">
-      {/* Background Pattern */}
-      <div className="absolute inset-0 opacity-10">
-        <div className="absolute inset-0 bg-[url('/grid.svg')] opacity-20"></div>
+    <div className="min-h-screen bg-slate-50 flex flex-col justify-between items-center px-4 py-12 text-slate-900">
+      {/* Header Logo */}
+      <div className="w-full max-w-md mx-auto text-center">
+        <Link href="/" className="inline-block">
+          <Image
+            src="/img/citiplumb.jpg"
+            alt="PT. CITI PLUMB Logo"
+            width={52}
+            height={52}
+            className="mx-auto rounded-xl border border-slate-200 shadow-xs object-cover"
+            priority
+          />
+        </Link>
       </div>
 
-      {/* Main Content */}
-      <div className="relative z-10 max-w-lg w-full">
-        {/* 404 Card */}
-        <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-2xl border border-white/20 overflow-hidden">
-          {/* Header - Khusus 404 dengan warna kuning */}
-          <div className="bg-linear-to-r from-yellow-500 to-orange-500 p-8 text-center">
-            <div className="w-24 h-24 mx-auto bg-white/20 rounded-full flex items-center justify-center mb-4">
-              <Search className="w-12 h-12 text-white" />
-            </div>
-            <h1 className="text-6xl font-bold text-white mb-2">404</h1>
-            <p className="text-xl text-white/90">Halaman Tidak Ditemukan</p>
+      {/* Main 404 Content */}
+      <main className="w-full max-w-md mx-auto my-auto py-6">
+        <div className="bg-white border border-slate-200/90 rounded-2xl p-8 shadow-xs text-center">
+          <div className="w-12 h-12 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center mx-auto mb-5 border border-slate-200/60">
+            <FileQuestion className="w-6 h-6" />
           </div>
 
-          {/* Body */}
-          <div className="p-8">
-            <div className="text-center mb-6">
-              <p className="text-gray-600 mb-4">
-                Maaf, halaman yang Anda cari tidak ditemukan atau telah
-                dipindahkan. Periksa kembali URL atau kembali ke beranda.
-              </p>
+          <span className="text-xs font-semibold px-2.5 py-1 rounded-md bg-amber-50 text-amber-700 border border-amber-200">
+            Error 404
+          </span>
 
-              {/* Countdown Timer */}
-              <div className="bg-gray-100 rounded-lg p-4 inline-block mx-auto">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-yellow-100 rounded-full flex items-center justify-center">
-                    <span className="text-2xl font-bold text-yellow-600">
-                      {countdown}
-                    </span>
-                  </div>
-                  <div className="text-left">
-                    <p className="text-sm text-gray-600">Detik tersisa</p>
-                    <p className="font-semibold text-gray-800">
-                      Anda akan dialihkan ke beranda
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900 mt-3 mb-2">
+            Halaman Tidak Ditemukan
+          </h1>
 
-            {/* Action Buttons */}
-            <div className="grid grid-cols-2 gap-3">
-              <Button
-                onClick={() => router.back()}
-                variant="outline"
-                className="border-gray-300 hover:bg-gray-50"
-              >
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Kembali
-              </Button>
+          <p className="text-sm text-slate-500 leading-relaxed max-w-sm mx-auto mb-8">
+            Halaman yang Anda tuju tidak tersedia, telah dipindahkan, atau alamat URL yang dimasukkan salah.
+          </p>
 
-              <Button
-                onClick={() => router.push("/")}
-                className="bg-blue-600 hover:bg-blue-700 text-white"
-              >
-                <Home className="w-4 h-4 mr-2" />
-                Beranda
-              </Button>
-            </div>
+          <div className="flex flex-col sm:flex-row gap-2.5 justify-center">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => router.back()}
+              className="h-10 text-xs font-medium border-slate-200 hover:bg-slate-50 text-slate-700"
+            >
+              <ArrowLeft className="w-3.5 h-3.5 mr-1.5" />
+              Kembali
+            </Button>
 
-            {/* Contact Support */}
-          
+            <Button
+              asChild
+              className="h-10 text-xs font-medium bg-slate-900 hover:bg-slate-800 text-white"
+            >
+              <Link href="/">
+                <Home className="w-3.5 h-3.5 mr-1.5" />
+                Ke Halaman Utama
+              </Link>
+            </Button>
           </div>
         </div>
+      </main>
 
-        {/* Footer */}
-        <p className="text-center text-white/60 text-sm mt-4">
-          © {new Date().getFullYear()} PT. CITI PLUMB.
-        </p>
-      </div>
+      {/* Footer */}
+      <footer className="text-center text-xs text-slate-400 py-2">
+        © {currentYear} PT. CITI PLUMB. All rights reserved.
+      </footer>
     </div>
   );
 }

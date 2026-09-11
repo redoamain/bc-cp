@@ -4,6 +4,7 @@
 import { Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import {
   AlertTriangle,
@@ -13,38 +14,36 @@ import {
   Lock,
   Wrench,
   Ban,
+  MessageCircle,
 } from "lucide-react";
 
 function ErrorContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const currentYear = new Date().getFullYear();
 
-  // Langsung baca dari URL
   const errorCode = searchParams.get("code") || "500";
 
-  // Jangan tampilkan 404 di sini
   if (errorCode === "404") {
-    router.push("/404");
+    router.push("/not-found");
     return null;
   }
 
-  // Fungsi untuk mendapatkan icon
   const getErrorIcon = () => {
     switch (errorCode) {
       case "403":
-        return <Lock className="w-12 h-12 text-white" />;
+        return <Lock className="w-6 h-6 text-amber-600" />;
       case "500":
-        return <AlertTriangle className="w-12 h-12 text-white" />;
+        return <AlertTriangle className="w-6 h-6 text-red-600" />;
       case "503":
-        return <Wrench className="w-12 h-12 text-white" />;
+        return <Wrench className="w-6 h-6 text-blue-600" />;
       case "400":
-        return <Ban className="w-12 h-12 text-white" />;
+        return <Ban className="w-6 h-6 text-orange-600" />;
       default:
-        return <AlertTriangle className="w-12 h-12 text-white" />;
+        return <AlertTriangle className="w-6 h-6 text-red-600" />;
     }
   };
 
-  // Fungsi untuk mendapatkan pesan
   const getErrorMessage = () => {
     switch (errorCode) {
       case "403":
@@ -52,137 +51,120 @@ function ErrorContent() {
       case "500":
         return "Kesalahan Server Internal";
       case "503":
-        return "Layanan Tidak Tersedia";
+        return "Layanan Dalam Pemeliharaan";
       case "400":
         return "Permintaan Tidak Valid";
       default:
-        return "Terjadi Kesalahan";
+        return "Terjadi Kendala Sistem";
     }
   };
 
-  // Fungsi untuk mendapatkan warna gradient
-  const getGradientClass = () => {
+  const getErrorDescription = () => {
     switch (errorCode) {
       case "403":
-        return "bg-gradient-to-r from-red-600 to-red-500";
+        return "Anda tidak memiliki izin untuk mengakses halaman ini. Silakan hubungi administrator.";
       case "500":
-        return "bg-gradient-to-r from-red-600 to-pink-500";
+        return "Terjadi kendala pada sistem backend. Silakan coba muat ulang atau hubungi tim IT.";
       case "503":
-        return "bg-gradient-to-r from-purple-600 to-purple-500";
+        return "Sistem sedang dalam proses pemeliharaan. Silakan coba kembali dalam beberapa saat.";
       case "400":
-        return "bg-gradient-to-r from-orange-600 to-red-500";
+        return "Permintaan yang Anda kirim tidak dapat diproses. Silakan periksa kembali.";
       default:
-        return "bg-gradient-to-r from-red-600 to-red-500";
+        return "Terjadi kesalahan yang tidak terduga. Silakan muat ulang halaman.";
     }
   };
 
   return (
-    <div className="min-h-screen bg-linear-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-4">
-      {/* Background Pattern */}
-      <div className="absolute inset-0 opacity-10">
-        <div className="absolute inset-0 bg-[url('/grid.svg')] opacity-20"></div>
+    <div className="min-h-screen bg-slate-50 flex flex-col justify-between items-center px-4 py-12 text-slate-900">
+      {/* Header Logo */}
+      <div className="w-full max-w-md mx-auto text-center">
+        <Link href="/" className="inline-block">
+          <Image
+            src="/img/citiplumb.jpg"
+            alt="PT. CITI PLUMB Logo"
+            width={52}
+            height={52}
+            className="mx-auto rounded-xl border border-slate-200 shadow-xs object-cover"
+            priority
+          />
+        </Link>
       </div>
 
-      {/* Main Content */}
-      <div className="relative z-10 max-w-2xl w-full">
-        {/* Error Card */}
-        <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-2xl border border-white/20 overflow-hidden">
-          {/* Header */}
-          <div className={`${getGradientClass()} p-6 text-center`}>
-            <div className="w-24 h-24 mx-auto bg-white/20 rounded-full flex items-center justify-center mb-4">
-              {getErrorIcon()}
-            </div>
-            <h1 className="text-4xl font-bold text-white mb-2">
-              Error {errorCode}
-            </h1>
-            <p className="text-white/90 text-lg">{getErrorMessage()}</p>
+      {/* Main Error Content */}
+      <main className="w-full max-w-md mx-auto my-auto py-6">
+        <div className="bg-white border border-slate-200/90 rounded-2xl p-8 shadow-xs text-center">
+          <div className="w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center mx-auto mb-5 border border-slate-200/60">
+            {getErrorIcon()}
           </div>
 
-          {/* Body */}
-          <div className="p-8">
-            {/* Informasi Error */}
-            <div className="text-center mb-8">
-              <p className="text-gray-600">
-                {errorCode === "403" &&
-                  "Anda tidak memiliki izin untuk mengakses halaman ini. Silakan hubungi administrator."}
-                {errorCode === "500" &&
-                  "Kami mengalami kendala teknis. Tim IT kami telah diberitahu dan sedang memperbaiki masalah ini."}
-                {errorCode === "503" &&
-                  "Sistem sedang dalam pemeliharaan. Silakan coba lagi dalam beberapa saat."}
-                {errorCode === "400" &&
-                  "Permintaan yang Anda kirim tidak dapat diproses. Silakan periksa kembali."}
-              </p>
-            </div>
+          <span className="text-xs font-semibold px-2.5 py-1 rounded-md bg-red-50 text-red-700 border border-red-200">
+            Error {errorCode}
+          </span>
 
-            {/* Action Buttons */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              <Button
-                onClick={() => window.location.reload()}
-                className="bg-gray-600 hover:bg-gray-700 text-white"
-              >
-                <RefreshCw className="w-4 h-4 mr-2" />
-                Refresh
-              </Button>
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900 mt-3 mb-2">
+            {getErrorMessage()}
+          </h1>
 
-              <Button
-                onClick={() => router.back()}
-                className="bg-blue-600 hover:bg-blue-700 text-white"
-              >
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Kembali
-              </Button>
+          <p className="text-sm text-slate-500 leading-relaxed max-w-sm mx-auto mb-6">
+            {getErrorDescription()}
+          </p>
 
-              <Button
-                onClick={() => router.push("/")}
-                className="bg-green-600 hover:bg-green-700 text-white"
-              >
-                <Home className="w-4 h-4 mr-2" />
-                Home
-              </Button>
-            </div>
+          <div className="flex flex-col sm:flex-row gap-2 justify-center mb-6">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => window.location.reload()}
+              className="h-10 text-xs font-medium border-slate-200 hover:bg-slate-50 text-slate-700"
+            >
+              <RefreshCw className="w-3.5 h-3.5 mr-1.5" />
+              Muat Ulang
+            </Button>
 
-            {/* Contact Support */}
-            <div className="mt-6 pt-6 border-t border-gray-200">
-              <div className="flex items-center justify-between flex-wrap gap-4">
-                <div className="flex items-center gap-3">
-                  <Image
-                    src="/img/citiplumb.jpg"
-                    alt="PT. CITI PLUMB"
-                    width={40}
-                    height={40}
-                    className="rounded-full"
-                  />
-                  <div>
-                    <p className="text-sm font-semibold text-gray-800">
-                      IT Support
-                    </p>
-                    <p className="text-xs text-gray-500">Online 24/7</p>
-                  </div>
-                </div>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => router.back()}
+              className="h-10 text-xs font-medium border-slate-200 hover:bg-slate-50 text-slate-700"
+            >
+              <ArrowLeft className="w-3.5 h-3.5 mr-1.5" />
+              Kembali
+            </Button>
 
-                <Button
-                  variant="outline"
-                  className="border-green-500 text-green-600 hover:bg-green-50"
-                  onClick={() => {
-                    const message = `Halo IT Support, saya mengalami error ${errorCode} pada aplikasi.`;
-                    window.open(
-                      `https://wa.me/62895327504234?text=${encodeURIComponent(message)}`,
-                      "_blank",
-                    );
-                  }}
-                >
-                  Hubungi via WhatsApp
-                </Button>
-              </div>
-            </div>
+            <Button
+              asChild
+              className="h-10 text-xs font-medium bg-slate-900 hover:bg-slate-800 text-white"
+            >
+              <Link href="/">
+                <Home className="w-3.5 h-3.5 mr-1.5" />
+                Beranda
+              </Link>
+            </Button>
+          </div>
+
+          {/* IT Support Contact */}
+          <div className="pt-5 border-t border-slate-100 flex items-center justify-between text-xs">
+            <span className="text-slate-400">Butuh bantuan teknis?</span>
+            <button
+              onClick={() => {
+                const message = `Halo IT Support PT. CITI PLUMB, saya mengalami error ${errorCode} pada aplikasi.`;
+                window.open(
+                  `https://wa.me/62895327504234?text=${encodeURIComponent(message)}`,
+                  "_blank",
+                );
+              }}
+              className="inline-flex items-center gap-1.5 font-medium text-emerald-600 hover:text-emerald-700 transition-colors"
+            >
+              <MessageCircle className="w-3.5 h-3.5" />
+              Hubungi IT Support
+            </button>
           </div>
         </div>
+      </main>
 
-        {/* Footer */}
-        <p className="text-center text-white/60 text-sm mt-4">
-          © {new Date().getFullYear()} PT. CITI PLUMB.
-        </p>
-      </div>
+      {/* Footer */}
+      <footer className="text-center text-xs text-slate-400 py-2">
+        © {currentYear} PT. CITI PLUMB. All rights reserved.
+      </footer>
     </div>
   );
 }
@@ -191,8 +173,8 @@ export default function ErrorPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen bg-linear-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center">
-          <div className="text-white">Loading...</div>
+        <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+          <div className="text-slate-500 text-sm">Memuat...</div>
         </div>
       }
     >

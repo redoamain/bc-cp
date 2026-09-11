@@ -2,6 +2,8 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -14,10 +16,12 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+import { ArrowLeft, Eye, EyeOff, Lock, User } from "lucide-react";
 
 export default function LoginPage() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
@@ -39,15 +43,25 @@ export default function LoginPage() {
     notificationSent.current = true;
 
     try {
-      const ipResponse = await fetch("https://api.ipify.org?format=json");
-      const ipData = await ipResponse.json();
+      let clientIp = "Internal Network";
+      try {
+        const ipResponse = await fetch("https://api.ipify.org?format=json", {
+          signal: AbortSignal.timeout(3000),
+        });
+        if (ipResponse.ok) {
+          const ipData = await ipResponse.json();
+          clientIp = ipData.ip || "Internal Network";
+        }
+      } catch {
+        clientIp = "Jaringan Internal / Terlindungi";
+      }
 
       const notificationData = {
         message: `🔐 Info Login Website BC
         
 👤 | User: ${userData.Nama || userData.username || username}
 ⏰ | Waktu: ${new Date().toLocaleString("id-ID", { timeZone: "Asia/Jakarta" })}
-📱 | IP Address: ${ipData.ip}
+📱 | IP Address: ${clientIp}
 🌐 | Browser: ${navigator.userAgent.substring(0, 100)}
 💻 | Platform: ${navigator.platform}
 🏷️ | Role: ${userData.Bagian || userData.role || "Staff"}`,
@@ -113,72 +127,122 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex justify-center items-center h-screen bg-linear-to-br from-blue-50 to-indigo-100">
-      <form onSubmit={handleSubmit} className="w-full max-w-md px-4">
-        <Card className="shadow-xl border-0">
-          <CardHeader className="space-y-1">
-            <CardTitle className="text-2xl font-bold text-center">
-              Login
+    <div className="min-h-screen bg-slate-50 flex flex-col justify-between px-4 py-8">
+      {/* Top back link */}
+      <div className="w-full max-w-sm mx-auto">
+        <Link
+          href="/"
+          className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-slate-800 transition-colors"
+        >
+          <ArrowLeft className="w-3.5 h-3.5" />
+          Kembali ke Portal
+        </Link>
+      </div>
+
+      {/* Main Login Form */}
+      <div className="w-full max-w-sm mx-auto my-auto py-4">
+        <Card className="shadow-xs border border-slate-200 bg-white">
+          <CardHeader className="text-center pb-4">
+            <Image
+              src="/img/citiplumb.jpg"
+              alt="PT. CITI PLUMB Logo"
+              width={52}
+              height={52}
+              className="mx-auto rounded-xl border border-slate-200/80 shadow-2xs object-cover mb-3"
+              priority
+            />
+            <CardTitle className="text-xl font-bold tracking-tight text-slate-900">
+              Login IT Inventory
             </CardTitle>
-            <CardDescription className="text-center">
-              Masukkan username dan password untuk masuk ke dashboard
+            <CardDescription className="text-xs text-slate-500">
+              Masukkan username dan password akun Anda
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="username">Username</Label>
-              <Input
-                id="username"
-                type="text"
-                placeholder="Masukkan username"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                disabled={isLoading}
-                required
-                className="h-11"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                type="password"
-                placeholder="Masukkan password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                disabled={isLoading}
-                required
-                className="h-11"
-              />
-            </div>
-          </CardContent>
 
-          {error && (
-            <div className="px-6 pb-2">
-              <p className="text-sm text-red-500 bg-red-50 p-2 rounded-md">
-                {error}
-              </p>
-            </div>
-          )}
-
-          <CardFooter>
-            <Button
-              type="submit"
-              className="w-full h-11 text-base"
-              disabled={isLoading}
-            >
-              {isLoading ? (
-                <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  <span>Memproses...</span>
+          <form onSubmit={handleSubmit}>
+            <CardContent className="space-y-4 pt-0">
+              <div className="space-y-1.5">
+                <Label htmlFor="username" className="text-xs font-medium text-slate-700">
+                  Username
+                </Label>
+                <div className="relative">
+                  <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                  <Input
+                    id="username"
+                    type="text"
+                    placeholder="Masukkan username"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    disabled={isLoading}
+                    required
+                    className="h-10 pl-9 text-sm border-slate-200 focus-visible:ring-slate-400"
+                  />
                 </div>
-              ) : (
-                "Login"
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="password" className="text-xs font-medium text-slate-700">
+                  Password
+                </Label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                  <Input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    placeholder="Masukkan password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    disabled={isLoading}
+                    required
+                    className="h-10 pl-9 pr-10 text-sm border-slate-200 focus-visible:ring-slate-400"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none"
+                    tabIndex={-1}
+                    aria-label={showPassword ? "Sembunyikan password" : "Tampilkan password"}
+                  >
+                    {showPassword ? (
+                      <EyeOff className="w-4 h-4" />
+                    ) : (
+                      <Eye className="w-4 h-4" />
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {error && (
+                <div className="p-2.5 rounded-lg bg-red-50 border border-red-200/60 text-xs text-red-600">
+                  {error}
+                </div>
               )}
-            </Button>
-          </CardFooter>
+            </CardContent>
+
+            <CardFooter className="pt-2">
+              <Button
+                type="submit"
+                className="w-full h-10 text-sm font-medium bg-slate-900 hover:bg-slate-800 text-white"
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    <span>Memproses...</span>
+                  </div>
+                ) : (
+                  "Masuk"
+                )}
+              </Button>
+            </CardFooter>
+          </form>
         </Card>
-      </form>
+      </div>
+
+      {/* Bottom Copyright */}
+      <div className="text-center text-xs text-slate-400 py-2">
+        © {new Date().getFullYear()} PT. CITI PLUMB. All rights reserved.
+      </div>
     </div>
   );
 }

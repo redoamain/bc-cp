@@ -316,29 +316,31 @@ export default function WipPage() {
 
         {/* Loading */}
         {loading ? (
-          <Card>
+          <Card className="border border-slate-200/80 shadow-xs bg-white">
             <CardContent className="flex flex-col items-center justify-center py-16">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mb-4"></div>
-              <h3 className="text-lg font-semibold text-muted-foreground">
+              <div className="animate-spin rounded-full h-8 w-8 border-2 border-slate-800 border-t-transparent mb-3"></div>
+              <h3 className="text-sm font-semibold text-slate-800">
                 Memuat Data...
               </h3>
-              <p className="text-muted-foreground text-sm">
+              <p className="text-xs text-slate-500">
                 Mohon tunggu sebentar
               </p>
             </CardContent>
           </Card>
         ) : isFirstLoad ? (
           /* First Load */
-          <Card className="border-2 border-dashed border-muted-foreground/30">
-            <CardContent className="flex flex-col items-center justify-center py-16">
-              <Search className="h-16 w-16 text-muted-foreground/50 mb-4" />
-              <h3 className="text-xl font-semibold text-muted-foreground mb-2">
-                Belum Ada Data
+          <Card className="border border-dashed border-slate-200/90 shadow-xs bg-white/70">
+            <CardContent className="flex flex-col items-center justify-center py-14 text-center">
+              <div className="w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center text-slate-400 mb-3 border border-slate-200/60">
+                <Search className="h-5 w-5" />
+              </div>
+              <h3 className="text-base font-semibold text-slate-800 mb-1">
+                Belum Memilih Periode
               </h3>
-              <p className="text-muted-foreground text-center max-w-md">
+              <p className="text-xs text-slate-500 max-w-md">
                 Silakan pilih periode tanggal di atas dan klik tombol
-                <span className="font-medium text-primary mx-1">
-                  "Tampilkan"
+                <span className="font-semibold text-slate-700 mx-1">
+                  &quot;Tampilkan&quot;
                 </span>
                 untuk melihat laporan posisi barang WIP.
               </p>
@@ -348,52 +350,58 @@ export default function WipPage() {
           /* Ada Data */
           <>
             {/* Summary Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between pb-2">
-                  <CardTitle className="text-sm font-medium text-muted-foreground">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <Card className="border border-slate-200/80 shadow-xs bg-white">
+                <CardHeader className="flex flex-row items-center justify-between pb-2 pt-4 px-4.5">
+                  <CardTitle className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
                     Total Item
                   </CardTitle>
-                  <Package className="h-4 w-4 text-muted-foreground" />
+                  <div className="w-7 h-7 rounded-lg bg-slate-100 flex items-center justify-center text-slate-600 border border-slate-200/60">
+                    <Package className="h-3.5 w-3.5" />
+                  </div>
                 </CardHeader>
-                <CardContent>
-                  <p className="text-2xl font-bold">{data.length}</p>
-                  <p className="text-xs text-muted-foreground mt-1">
+                <CardContent className="px-4.5 pb-4 pt-0">
+                  <p className="text-2xl font-bold tracking-tight text-slate-900">{data.length}</p>
+                  <p className="text-xs text-slate-500 mt-1">
                     Jumlah Barang WIP
                   </p>
                 </CardContent>
               </Card>
 
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between pb-2">
-                  <CardTitle className="text-sm font-medium text-muted-foreground">
+              <Card className="border border-slate-200/80 shadow-xs bg-white">
+                <CardHeader className="flex flex-row items-center justify-between pb-2 pt-4 px-4.5">
+                  <CardTitle className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
                     Total Jumlah Barang
                   </CardTitle>
-                  <TrendingDown className="h-4 w-4 text-purple-500" />
+                  <div className="w-7 h-7 rounded-lg bg-purple-50 flex items-center justify-center text-purple-600 border border-purple-100">
+                    <TrendingDown className="h-3.5 w-3.5" />
+                  </div>
                 </CardHeader>
-                <CardContent>
-                  <p className="text-2xl font-bold text-purple-600">
+                <CardContent className="px-4.5 pb-4 pt-0">
+                  <p className="text-2xl font-bold tracking-tight text-purple-600">
                     {formatNumber(totalSaldoAkhir)}
                   </p>
-                  <p className="text-xs text-muted-foreground mt-1">
+                  <p className="text-xs text-slate-500 mt-1">
                     Total quantity WIP (Saldo Akhir)
                   </p>
                 </CardContent>
               </Card>
 
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between pb-2">
-                  <CardTitle className="text-sm font-medium text-muted-foreground">
-                    Periode
+              <Card className="border border-slate-200/80 shadow-xs bg-white">
+                <CardHeader className="flex flex-row items-center justify-between pb-2 pt-4 px-4.5">
+                  <CardTitle className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                    Periode Laporan
                   </CardTitle>
-                  <Calendar className="h-4 w-4 text-blue-500" />
+                  <div className="w-7 h-7 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600 border border-blue-100">
+                    <Calendar className="h-3.5 w-3.5" />
+                  </div>
                 </CardHeader>
-                <CardContent>
-                  <p className="text-base font-bold text-blue-600">
+                <CardContent className="px-4.5 pb-4 pt-0">
+                  <p className="text-sm font-bold tracking-tight text-slate-900 mt-1">
                     {formatDate(tgl1)} - {formatDate(tgl2)}
                   </p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Rentang tanggal laporan
+                  <p className="text-xs text-slate-500 mt-1.5">
+                    Rentang tanggal aktif
                   </p>
                 </CardContent>
               </Card>
@@ -408,8 +416,8 @@ export default function WipPage() {
             )}
 
             {/* DataTable */}
-            <Card>
-              <CardContent className="p-6">
+            <Card className="border border-slate-200/80 shadow-xs bg-white overflow-hidden">
+              <CardContent className="p-4 sm:p-6">
                 <DataTableMutasi
                   columns={columns}
                   data={data}
@@ -421,17 +429,16 @@ export default function WipPage() {
           </>
         ) : (
           /* Data Kosong */
-          <Card className="border-2 border-dashed border-muted-foreground/30">
-            <CardContent className="flex flex-col items-center justify-center py-12">
-              <Package className="h-12 w-12 text-muted-foreground/50 mb-3" />
-              <h3 className="text-lg font-semibold text-muted-foreground mb-1">
+          <Card className="border border-dashed border-slate-200/90 shadow-xs bg-white/70">
+            <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+              <div className="w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center text-slate-400 mb-3 border border-slate-200/60">
+                <Package className="h-5 w-5" />
+              </div>
+              <h3 className="text-base font-semibold text-slate-800 mb-1">
                 Tidak Ada Data
               </h3>
-              <p className="text-muted-foreground text-center">
-                Tidak ditemukan data untuk periode yang dipilih.
-              </p>
-              <p className="text-muted-foreground text-sm mt-1">
-                Coba pilih rentang tanggal yang berbeda.
+              <p className="text-xs text-slate-500 max-w-sm">
+                Tidak ditemukan data untuk periode yang dipilih. Coba pilih rentang tanggal yang berbeda.
               </p>
             </CardContent>
           </Card>

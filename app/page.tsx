@@ -1,209 +1,104 @@
 // app/page.tsx
 "use client";
 
-import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
-  Package,
-  Camera,
-  ArrowRight,
-  Box,
-  Video,
-  HardDrive,
-  Eye,
-} from "lucide-react";
+import { Package, Camera, ArrowRight } from "lucide-react";
 
 export default function Home() {
   const currentYear = new Date().getFullYear();
   const router = useRouter();
-  const [hoveredCard, setHoveredCard] = useState<string | null>(null);
-
-  const handleNavigation = (path: string) => {
-    router.push(path);
-  };
 
   return (
-    <div className="min-h-screen relative bg-linear-to-br from-slate-900 via-slate-800 to-slate-900">
-      {/* Background Image */}
-      <div className="absolute inset-0">
-        <Image
-          src="/img/bg-cp-v2.webp"
-          alt="Background"
-          fill
-          className="object-cover opacity-30"
-          priority
-        />
-        {/* Simple overlay */}
-        <div className="absolute inset-0 bg-linear-to-br from-blue-900/70 via-slate-900/80 to-slate-900/70 backdrop-blur-sm" />
-      </div>
-
-      {/* Konten Utama */}
-      <div className="relative z-10 container mx-auto px-4 py-8 min-h-screen flex flex-col justify-between">
-        {/* Header */}
-        <div className="text-center mb-12 mt-8">
-          <div className="inline-block mb-4">
+    <div className="min-h-screen bg-slate-50 flex flex-col justify-between text-slate-900">
+      {/* Main Content */}
+      <main className="flex-1 flex flex-col items-center justify-center px-4 py-12">
+        <div className="w-full max-w-xl mx-auto">
+          {/* Header */}
+          <div className="text-center mb-8">
             <Image
               src="/img/citiplumb.jpg"
               alt="PT. CITI PLUMB Logo"
-              width={100}
-              height={50}
-              className="mx-auto rounded-full"
+              width={64}
+              height={64}
+              className="mx-auto rounded-xl border border-slate-200/80 shadow-xs object-cover"
               priority
             />
-          </div>
-          <h1 className="text-3xl md:text-4xl font-bold mb-3 text-white">
-            <span className="text-transparent bg-clip-text bg-linear-to-r from-blue-400 to-yellow-400">
-              Selamat Datang
-            </span>
-          </h1>
-          <p className="text-base md:text-lg text-white/80 max-w-2xl mx-auto">
-            Portal Terintegrasi PT. CITI PLUMB - Akses sistem inventory dan CCTV
-            dalam satu platform
-          </p>
-        </div>
-
-        {/* Cards Container */}
-        <div className="flex flex-col md:flex-row items-stretch justify-center gap-6 max-w-5xl mx-auto flex-1 py-6">
-          {/* Card Inventory */}
-          <Card
-            className={`w-full md:w-96 cursor-pointer transition-shadow
-              ${
-                hoveredCard === "inventory"
-                  ? "shadow-2xl shadow-blue-500/20 border-blue-500"
-                  : "shadow-lg hover:shadow-xl border-white/20 hover:border-blue-500/50"
-              }
-              bg-white/95 backdrop-blur-sm border-2
-            `}
-            onMouseEnter={() => setHoveredCard("inventory")}
-            onMouseLeave={() => setHoveredCard(null)}
-            onClick={() => handleNavigation("/auth/login")}
-          >
-            <CardHeader className="text-center pb-3">
-              <div className="w-20 h-20 mx-auto mb-3 rounded-full bg-blue-100 flex items-center justify-center">
-                <Package className="w-10 h-10 text-blue-600" />
-              </div>
-              <CardTitle className="text-xl font-bold text-gray-800">
-                IT Inventory System
-              </CardTitle>
-              <CardDescription className="text-sm text-gray-600">
-                Manajemen inventory modern untuk kebutuhan IT perusahaan
-              </CardDescription>
-            </CardHeader>
-
-            <CardContent className="text-center pb-3">
-              <div className="space-y-2 text-sm">
-                <div className="flex items-center justify-center gap-2 text-gray-600">
-                  <Box className="w-4 h-4" />
-                  <span>Manajemen Stok Barang</span>
-                </div>
-                <div className="flex items-center justify-center gap-2 text-gray-600">
-                  <HardDrive className="w-4 h-4" />
-                  <span>Laporan Pengeluaran & Pemasukan</span>
-                </div>
-                <div className="flex items-center justify-center gap-2 text-gray-600">
-                  <Package className="w-4 h-4" />
-                  <span>Mutasi Barang & Riwayat Transaksi</span>
-                </div>
-              </div>
-            </CardContent>
-
-            <CardFooter>
-              <Button
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleNavigation("/auth/login");
-                }}
-              >
-                Login ke Inventory
-                <ArrowRight className="w-4 h-4 ml-2" />
-              </Button>
-            </CardFooter>
-          </Card>
-
-          {/* Card CCTV */}
-          <Card
-            className={`w-full md:w-96 cursor-pointer transition-shadow
-              ${
-                hoveredCard === "cctv"
-                  ? "shadow-2xl shadow-yellow-500/20 border-yellow-500"
-                  : "shadow-lg hover:shadow-xl border-white/20 hover:border-yellow-500/50"
-              }
-              bg-white/95 backdrop-blur-sm border-2
-            `}
-            onMouseEnter={() => setHoveredCard("cctv")}
-            onMouseLeave={() => setHoveredCard(null)}
-            onClick={() => handleNavigation("/api/cctv/login")}
-          >
-            <CardHeader className="text-center pb-3">
-              <div className="w-20 h-20 mx-auto mb-3 rounded-full bg-yellow-100 flex items-center justify-center">
-                <Camera className="w-10 h-10 text-yellow-600" />
-              </div>
-              <CardTitle className="text-xl font-bold text-gray-800">
-                CCTV System
-              </CardTitle>
-              <CardDescription className="text-sm text-gray-600">
-                Monitoring keamanan real-time untuk seluruh area
-              </CardDescription>
-            </CardHeader>
-
-            <CardContent className="text-center pb-3">
-              <div className="space-y-2 text-sm">
-                <div className="flex items-center justify-center gap-2 text-gray-600">
-                  <Video className="w-4 h-4" />
-                  <span>Live Streaming Kamera</span>
-                </div>
-                <div className="flex items-center justify-center gap-2 text-gray-600">
-                  <Eye className="w-4 h-4" />
-                  <span>Rekaman dan Playback</span>
-                </div>
-                <div className="flex items-center justify-center gap-2 text-gray-600">
-                  <Camera className="w-4 h-4" />
-                  <span>Manajemen Kamera & Zona</span>
-                </div>
-              </div>
-            </CardContent>
-
-            <CardFooter>
-              <div className="flex flex-col w-full gap-2">
-
-              <Button
-                className="w-full bg-yellow-500 hover:bg-yellow-600 text-white"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleNavigation("/api/cctv/login");
-                }}
-                >
-                Login ke CCTV 
-                <ArrowRight className="w-4 h-4 ml-2" />
-              </Button>
-                </div>
-            </CardFooter>
-          </Card>
-        </div>
-
-        {/* Footer */}
-        <div className="text-center mt-8 py-4">
-          <div className="inline-block px-6 py-3 rounded-full bg-white/5 backdrop-blur-sm border border-white/10">
-            <p className="text-sm text-white/80">
-              Pilih aplikasi yang ingin Anda akses untuk melanjutkan
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 mt-4">
+              PT. CITI PLUMB
+            </h1>
+            <p className="text-sm text-slate-500 mt-1">
+              Portal Layanan Terintegrasi
             </p>
           </div>
-          <p className="mt-2 text-xs text-white/40">
-            © {currentYear} PT. CITI PLUMB. All rights reserved.
-          </p>
+
+          {/* Cards Selection */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* IT Inventory */}
+            <div
+              role="button"
+              tabIndex={0}
+              onClick={() => router.push("/auth/login")}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  router.push("/auth/login");
+                }
+              }}
+              className="group flex flex-col justify-between p-6 bg-white rounded-xl border border-slate-200 hover:border-blue-500/60 hover:shadow-md transition-all cursor-pointer text-left"
+            >
+              <div>
+                <div className="w-10 h-10 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center mb-4 border border-blue-100 group-hover:bg-blue-600 group-hover:text-white transition-colors">
+                  <Package className="w-5 h-5" />
+                </div>
+                <h2 className="text-base font-semibold text-slate-900 group-hover:text-blue-600 transition-colors">
+                  IT Inventory
+                </h2>
+                <p className="text-sm text-slate-500 mt-1 leading-relaxed">
+                  Manajemen persediaan barang, mutasi, dan pelaporan Bea Cukai.
+                </p>
+              </div>
+              <div className="mt-6 flex items-center text-sm font-medium text-blue-600 group-hover:translate-x-0.5 transition-transform">
+                <span>Login Inventory</span>
+                <ArrowRight className="w-4 h-4 ml-1.5" />
+              </div>
+            </div>
+
+            {/* CCTV System */}
+            <div
+              role="button"
+              tabIndex={0}
+              onClick={() => router.push("/api/cctv/login")}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  router.push("/api/cctv/login");
+                }
+              }}
+              className="group flex flex-col justify-between p-6 bg-white rounded-xl border border-slate-200 hover:border-slate-400 hover:shadow-md transition-all cursor-pointer text-left"
+            >
+              <div>
+                <div className="w-10 h-10 rounded-lg bg-slate-100 text-slate-700 flex items-center justify-center mb-4 border border-slate-200 group-hover:bg-slate-800 group-hover:text-white transition-colors">
+                  <Camera className="w-5 h-5" />
+                </div>
+                <h2 className="text-base font-semibold text-slate-900 group-hover:text-slate-800 transition-colors">
+                  CCTV System
+                </h2>
+                <p className="text-sm text-slate-500 mt-1 leading-relaxed">
+                  Monitoring kamera dan rekaman pengawasan area secara langsung.
+                </p>
+              </div>
+              <div className="mt-6 flex items-center text-sm font-medium text-slate-700 group-hover:translate-x-0.5 transition-transform">
+                <span>Akses CCTV</span>
+                <ArrowRight className="w-4 h-4 ml-1.5" />
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
+      </main>
+
+      {/* Footer */}
+      <footer className="text-center py-6 text-xs text-slate-400 border-t border-slate-100">
+        © {currentYear} PT. CITI PLUMB. All rights reserved.
+      </footer>
     </div>
   );
 }

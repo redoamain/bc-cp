@@ -27,6 +27,8 @@ interface FilterTanggalProps {
   isLoading?: boolean;
   defaultTgl1?: string;
   defaultTgl2?: string;
+  title?: string;
+  description?: string;
 }
 
 export function FilterTanggal({
@@ -34,6 +36,8 @@ export function FilterTanggal({
   isLoading = false,
   defaultTgl1,
   defaultTgl2,
+  title = "Filter Periode",
+  description = "Tentukan rentang tanggal untuk memfilter laporan data",
 }: FilterTanggalProps) {
   // Parse default dates - lakukan sekali di initialization
   const parseDate = (dateStr?: string): Date | undefined => {
@@ -66,27 +70,27 @@ export function FilterTanggal({
   };
 
   return (
-    <Card>
-      <CardHeader className="pb-3">
-        <CardTitle>Filter Periode</CardTitle>
-        <CardDescription>
-          Pilih rentang tanggal untuk melihat data pemasukan
+    <Card className="border border-slate-200/80 shadow-xs bg-white">
+      <CardHeader className="pb-3 pt-4 px-5">
+        <CardTitle className="text-sm font-semibold text-slate-900">{title}</CardTitle>
+        <CardDescription className="text-xs text-slate-500">
+          {description}
         </CardDescription>
       </CardHeader>
-      <CardContent>
-        <div className="flex flex-col sm:flex-row gap-4">
-          <div className="flex-1 space-y-2">
-            <label className="text-sm font-medium">Tanggal Awal</label>
+      <CardContent className="px-5 pb-5 pt-0">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3 items-end">
+          <div className="lg:col-span-5 space-y-1.5">
+            <label className="text-xs font-medium text-slate-600">Tanggal Awal</label>
             <Popover open={isTgl1Open} onOpenChange={setIsTgl1Open}>
               <PopoverTrigger asChild>
                 <Button
                   variant="outline"
                   className={cn(
-                    "w-full justify-start text-left font-normal",
-                    !tgl1 && "text-muted-foreground"
+                    "w-full justify-start text-left font-normal text-xs h-9.5 border-slate-200 hover:bg-slate-50 text-slate-800",
+                    !tgl1 && "text-slate-400"
                   )}
                 >
-                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  <CalendarIcon className="mr-2 h-3.5 w-3.5 text-slate-400" />
                   {formatDisplayDate(tgl1)}
                 </Button>
               </PopoverTrigger>
@@ -105,18 +109,18 @@ export function FilterTanggal({
             </Popover>
           </div>
 
-          <div className="flex-1 space-y-2">
-            <label className="text-sm font-medium">Tanggal Akhir</label>
+          <div className="lg:col-span-5 space-y-1.5">
+            <label className="text-xs font-medium text-slate-600">Tanggal Akhir</label>
             <Popover open={isTgl2Open} onOpenChange={setIsTgl2Open}>
               <PopoverTrigger asChild>
                 <Button
                   variant="outline"
                   className={cn(
-                    "w-full justify-start text-left font-normal",
-                    !tgl2 && "text-muted-foreground"
+                    "w-full justify-start text-left font-normal text-xs h-9.5 border-slate-200 hover:bg-slate-50 text-slate-800",
+                    !tgl2 && "text-slate-400"
                   )}
                 >
-                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  <CalendarIcon className="mr-2 h-3.5 w-3.5 text-slate-400" />
                   {formatDisplayDate(tgl2)}
                 </Button>
               </PopoverTrigger>
@@ -135,17 +139,15 @@ export function FilterTanggal({
             </Popover>
           </div>
 
-          <div className="flex items-end gap-2">
+          <div className="lg:col-span-2">
             <Button 
               onClick={handleFilter} 
               disabled={!tgl1 || !tgl2 || isLoading}
-              className="px-6"
+              className="w-full h-9.5 text-xs font-medium bg-slate-900 hover:bg-slate-800 text-white shadow-xs"
             >
-              <Search className="h-4 w-4 mr-2" />
+              <Search className="h-3.5 w-3.5 mr-1.5" />
               Tampilkan
             </Button>
-        
-            
           </div>
         </div>
       </CardContent>

@@ -17,23 +17,24 @@ export default function GlobalError({
 
   return (
     <html>
-      <body>
-        <div className="min-h-screen bg-linear-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-4">
-          <div className="max-w-md w-full bg-white/95 backdrop-blur-sm rounded-2xl shadow-2xl border border-white/20 p-8">
-            <div className="text-center">
-              <h2 className="text-2xl font-bold text-red-600 mb-4">
-                Terjadi Kesalahan Kritis!
-              </h2>
-              <p className="text-gray-600 mb-4">
-                Silakan coba lagi atau hubungi IT Support.
-              </p>
-              <button
-                onClick={() => reset()}
-                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
-              >
-                Coba Lagi
-              </button>
-            </div>
+      <body className="antialiased font-sans">
+        <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+          <div className="max-w-md w-full bg-white rounded-2xl shadow-xs border border-slate-200/90 p-8 text-center">
+            <span className="text-xs font-semibold px-2.5 py-1 rounded-md bg-red-50 text-red-700 border border-red-200">
+              Kesalahan Kritis
+            </span>
+            <h2 className="text-xl font-bold tracking-tight text-slate-900 mt-3 mb-2">
+              Terjadi Kesalahan Sistem
+            </h2>
+            <p className="text-sm text-slate-500 mb-6">
+              Aplikasi mengalami kendala mendadak. Silakan coba muat ulang atau hubungi IT Support.
+            </p>
+            <button
+              onClick={() => reset()}
+              className="inline-flex items-center justify-center px-4 py-2 text-xs font-medium bg-slate-900 hover:bg-slate-800 text-white rounded-lg transition-colors shadow-xs"
+            >
+              Coba Lagi
+            </button>
           </div>
         </div>
       </body>

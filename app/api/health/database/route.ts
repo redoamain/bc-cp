@@ -15,7 +15,7 @@ export async function GET() {
       DB_DATABASE: process.env.DB_DATABASE || "not set",
     };
 
-    // Jika ada config yang missing, return disconnected dengan informasi
+    // Jika ada config yang missing, return disconnected
     if (
       !process.env.DB_USER ||
       !process.env.DB_PASSWORD ||
@@ -25,11 +25,9 @@ export async function GET() {
       return NextResponse.json(
         {
           status: "disconnected",
-          message: "Database configuration incomplete",
-          error: "Missing database credentials",
+          message: "Konfigurasi database server belum lengkap",
           responseTime: Math.round(endTime - startTime),
           timestamp: new Date().toISOString(),
-          config: dbConfig,
         },
         { status: 503 },
       );
@@ -45,12 +43,11 @@ export async function GET() {
 
       return NextResponse.json({
         status: "connected",
-        message: "Database connection successful",
-        database: process.env.DB_DATABASE,
-        server: process.env.DB_SERVER || "localhost",
+        message: "Koneksi database berhasil",
+        database: "IT Inventory DB",
+        server: "Server Utama (Internal)",
         responseTime,
         timestamp: new Date().toISOString(),
-        config: dbConfig,
       });
     } catch (dbError: any) {
       const endTime = performance.now();
@@ -58,23 +55,21 @@ export async function GET() {
 
       let errorMessage = "Gagal terhubung ke database";
       if (dbError.code === "ELOGIN") {
-        errorMessage = "Login database gagal - periksa username/password";
+        errorMessage = "Autentikasi database gagal";
       } else if (dbError.code === "ENOTFOUND" || dbError.code === "ETIMEOUT") {
-        errorMessage = "Tidak dapat menjangkau server database";
+        errorMessage = "Server database tidak dapat dijangkau";
       } else if (dbError.code === "ECONNREFUSED") {
         errorMessage = "Koneksi ditolak oleh server database";
-      } else if (dbError.message) {
-        errorMessage = dbError.message;
       }
 
       return NextResponse.json(
         {
           status: "disconnected",
           message: errorMessage,
-          error: dbError.message,
+          database: "IT Inventory DB",
+          server: "Server Utama (Internal)",
           responseTime,
           timestamp: new Date().toISOString(),
-          config: dbConfig,
         },
         { status: 503 },
       );

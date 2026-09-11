@@ -5,17 +5,13 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
 import {
   Database,
-  Wifi,
-  WifiOff,
-  Clock,
   Server,
   HardDrive,
   Activity,
@@ -24,6 +20,7 @@ import {
   AlertCircle,
   RefreshCw,
 } from "lucide-react";
+import { useUser } from "@/app/contexts/UserContext";
 
 interface DbStatus {
   status: "connected" | "disconnected" | "checking";
@@ -35,28 +32,21 @@ interface DbStatus {
 }
 
 export default function DashboardPage() {
+  const { user } = useUser();
   const [dbStatus, setDbStatus] = useState<DbStatus>({
     status: "checking",
     message: "Memeriksa koneksi database...",
-    timestamp: new Date().toLocaleString("id-ID"),
+    timestamp: new Date().toLocaleTimeString("id-ID"),
   });
 
   const [lastChecked, setLastChecked] = useState<Date>(new Date());
   const [isChecking, setIsChecking] = useState(false);
-
-  // Gunakan useRef untuk melacak apakah komponen masih mounted
   const isMounted = useRef(true);
-
-  // Gunakan useRef untuk melacak interval ID
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Fungsi untuk mengecek koneksi database
   const checkDatabaseConnection = useCallback(async () => {
-    // Cegah multiple requests
     if (isChecking) return;
-
     setIsChecking(true);
-
     const startTime = performance.now();
 
     try {
@@ -65,13 +55,12 @@ export default function DashboardPage() {
       const endTime = performance.now();
       const responseTime = Math.round(endTime - startTime);
 
-      // Only update state if component is still mounted
       if (isMounted.current) {
         if (response.ok && data.status === "connected") {
           setDbStatus({
             status: "connected",
             message: `Terhubung ke database ${data.database || "utama"}`,
-            timestamp: new Date().toLocaleString("id-ID"),
+            timestamp: new Date().toLocaleTimeString("id-ID"),
             database: data.database,
             server: data.server,
             responseTime: responseTime,
@@ -80,11 +69,10 @@ export default function DashboardPage() {
           setDbStatus({
             status: "disconnected",
             message: data.error || "Gagal terhubung ke database",
-            timestamp: new Date().toLocaleString("id-ID"),
+            timestamp: new Date().toLocaleTimeString("id-ID"),
             responseTime: responseTime,
           });
         }
-
         setLastChecked(new Date());
       }
     } catch (error) {
@@ -98,10 +86,9 @@ export default function DashboardPage() {
             error instanceof Error
               ? error.message
               : "Tidak dapat terhubung ke database",
-          timestamp: new Date().toLocaleString("id-ID"),
+          timestamp: new Date().toLocaleTimeString("id-ID"),
           responseTime: responseTime,
         });
-
         setLastChecked(new Date());
       }
     } finally {
@@ -109,31 +96,16 @@ export default function DashboardPage() {
         setIsChecking(false);
       }
     }
-  }, [isChecking]); // isChecking sebagai dependency
+  }, [isChecking]);
 
-  // Setup interval untuk pengecekan berkala
   useEffect(() => {
-    // Set mounted flag
     isMounted.current = true;
-
-    // Fungsi untuk memulai interval
-    const startInterval = () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-      }
-
-      intervalRef.current = setInterval(() => {
-        checkDatabaseConnection();
-      }, 30000); // 30 detik
-    };
-
-    // Panggil sekali saat komponen mount
     checkDatabaseConnection();
 
-    // Mulai interval
-    startInterval();
+    intervalRef.current = setInterval(() => {
+      checkDatabaseConnection();
+    }, 30000);
 
-    // Cleanup function
     return () => {
       isMounted.current = false;
       if (intervalRef.current) {
@@ -141,226 +113,168 @@ export default function DashboardPage() {
         intervalRef.current = null;
       }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Empty dependency array - hanya jalan sekali saat mount
+  }, []);
 
-  // Handler untuk manual refresh
   const handleManualCheck = () => {
     checkDatabaseConnection();
   };
 
-  const getStatusIcon = () => {
-    switch (dbStatus.status) {
-      case "connected":
-        return <Wifi className="h-5 w-5 text-green-500" />;
-      case "disconnected":
-        return <WifiOff className="h-5 w-5 text-red-500" />;
-      case "checking":
-        return <Activity className="h-5 w-5 text-yellow-500 animate-pulse" />;
-    }
-  };
-
-  const getStatusBadge = () => {
-    switch (dbStatus.status) {
-      case "connected":
-        return (
-          <Badge className="bg-green-100 text-green-800 border-green-200">
-            Connected
-          </Badge>
-        );
-      case "disconnected":
-        return <Badge variant="destructive">Disconnected</Badge>;
-      case "checking":
-        return (
-          <Badge
-            variant="outline"
-            className="text-yellow-600 border-yellow-200 bg-yellow-50"
-          >
-            Checking...
-          </Badge>
-        );
-    }
-  };
-
-  const getStatusColor = () => {
-    switch (dbStatus.status) {
-      case "connected":
-        return "border-l-4 border-l-green-500";
-      case "disconnected":
-        return "border-l-4 border-l-red-500";
-      case "checking":
-        return "border-l-4 border-l-yellow-500";
-    }
-  };
+  const displayName =
+    user?.Nama || user?.name || user?.UserName || user?.username || "Pengguna";
+  const displayRole =
+    user?.Bagian || user?.role || user?.jabatan || "Staff Operasional";
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="container mx-auto px-4 py-8 max-w-5xl">
       <div className="flex flex-col gap-6">
-        {/* Header */}
-        <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-3xl font-bold">Dashboard</h1>
-            <p className="text-muted-foreground">
-              Selamat datang di Inventory System
+        {/* Welcome & Overview Header */}
+        <div className="bg-white border border-slate-200/90 rounded-2xl p-6 shadow-xs flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2.5 flex-wrap">
+              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900">
+                Selamat Datang, {displayName}
+              </h1>
+              <Badge variant="outline" className="text-xs font-semibold px-2.5 py-0.5 bg-slate-100/80 text-slate-700 border-slate-200">
+                {displayRole}
+              </Badge>
+            </div>
+            <p className="text-sm text-slate-500">
+              Sistem IT Inventory Kawasan Berikat PT. CITI PLUMB terintegrasi dengan pengawasan Bea Cukai.
             </p>
           </div>
-          <Badge variant="outline" className="px-3 py-1">
-            <Clock className="h-3 w-3 mr-1" />
-            {lastChecked.toLocaleTimeString("id-ID")}
-          </Badge>
+
+          <div className="flex items-center gap-2 self-stretch md:self-auto justify-between md:justify-end">
+            <div className="flex items-center gap-2 text-xs text-slate-600 bg-slate-50 border border-slate-200/80 px-3 py-1.5 rounded-lg">
+              <span
+                className={`w-2 h-2 rounded-full ${
+                  dbStatus.status === "connected"
+                    ? "bg-emerald-500 animate-pulse"
+                    : dbStatus.status === "disconnected"
+                    ? "bg-red-500"
+                    : "bg-amber-500 animate-ping"
+                }`}
+              />
+              <span className="font-medium">
+                {dbStatus.status === "connected"
+                  ? `Database Online (${dbStatus.responseTime ?? 0}ms)`
+                  : dbStatus.status === "disconnected"
+                  ? "Database Terputus"
+                  : "Mengecek Koneksi..."}
+              </span>
+            </div>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={handleManualCheck}
+              disabled={isChecking}
+              className="h-8 w-8 text-slate-600 hover:text-slate-900"
+              title="Periksa ulang koneksi database"
+            >
+              <RefreshCw className={`h-3.5 w-3.5 ${isChecking ? "animate-spin" : ""}`} />
+            </Button>
+          </div>
         </div>
 
-        {/* Database Status Card */}
-        <Card className={`${getStatusColor()} shadow-md`}>
-          <CardHeader className="pb-2">
-            <div className="flex justify-between items-center">
+        {/* Database Connectivity Detail (Clean Info Grid) */}
+        <Card className="border border-slate-200/80 shadow-xs bg-white">
+          <CardHeader className="pb-3 pt-4 px-5">
+            <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Database className="h-5 w-5 text-primary" />
-                <CardTitle className="text-lg">
-                  Status Koneksi Database
+                <Database className="h-4 w-4 text-slate-600" />
+                <CardTitle className="text-sm font-semibold text-slate-900">
+                  Parameter Server & Konektivitas Database
                 </CardTitle>
               </div>
-              <div className="flex items-center gap-2">
-                {getStatusBadge()}
-                <button
-                  onClick={handleManualCheck}
-                  disabled={isChecking}
-                  className="p-1 hover:bg-gray-100 rounded-full transition-colors disabled:opacity-50"
-                  title="Refresh manual"
-                >
-                  <RefreshCw
-                    className={`h-4 w-4 ${isChecking ? "animate-spin" : ""}`}
-                  />
-                </button>
-              </div>
+              <span className="text-[11px] text-slate-400">
+                Pembaruan otomatis setiap 30 detik
+              </span>
             </div>
-            <CardDescription>
-              Informasi konektivitas dengan server database
-            </CardDescription>
           </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              {/* Status */}
-              <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
-                <div className="mt-0.5">{getStatusIcon()}</div>
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">
-                    Status
-                  </p>
-                  <p className="text-base font-semibold">
+          <CardContent className="px-5 pb-5 pt-0">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="p-3 rounded-lg bg-slate-50 border border-slate-200/60">
+                <p className="text-[11px] font-medium text-slate-400 mb-1">Status Koneksi</p>
+                <div className="flex items-center gap-1.5">
+                  {dbStatus.status === "connected" ? (
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                  ) : dbStatus.status === "disconnected" ? (
+                    <XCircle className="w-4 h-4 text-red-600" />
+                  ) : (
+                    <AlertCircle className="w-4 h-4 text-amber-600 animate-spin" />
+                  )}
+                  <span className="text-xs font-semibold text-slate-800">
                     {dbStatus.status === "connected"
                       ? "Terhubung"
                       : dbStatus.status === "disconnected"
-                        ? "Terputus"
-                        : "Memeriksa..."}
-                  </p>
+                      ? "Terputus"
+                      : "Memeriksa..."}
+                  </span>
                 </div>
               </div>
 
-              {/* Server */}
-              <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
-                <Server className="h-5 w-5 text-muted-foreground mt-0.5" />
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">
-                    Server
-                  </p>
-                  <p className="text-base font-semibold">
-                    {dbStatus.server ||
-                      process.env.NEXT_PUBLIC_DB_SERVER ||
-                      "Localhost"}
-                  </p>
+              <div className="p-3 rounded-lg bg-slate-50 border border-slate-200/60">
+                <p className="text-[11px] font-medium text-slate-400 mb-1">Infrastruktur Host</p>
+                <div className="flex items-center gap-1.5">
+                  <Server className="w-4 h-4 text-slate-500" />
+                  <span className="text-xs font-semibold text-slate-800 truncate" title="Server Utama (Internal)">
+                    {dbStatus.server || "Server Utama (Internal)"}
+                  </span>
                 </div>
               </div>
 
-              {/* Database */}
-              <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
-                <HardDrive className="h-5 w-5 text-muted-foreground mt-0.5" />
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">
-                    Database
-                  </p>
-                  <p className="text-base font-semibold">
-                    {dbStatus.database ||
-                      process.env.NEXT_PUBLIC_DB_DATABASE ||
-                      "InventoryDB"}
-                  </p>
+              <div className="p-3 rounded-lg bg-slate-50 border border-slate-200/60">
+                <p className="text-[11px] font-medium text-slate-400 mb-1">Layanan Database</p>
+                <div className="flex items-center gap-1.5">
+                  <HardDrive className="w-4 h-4 text-slate-500" />
+                  <span className="text-xs font-semibold text-slate-800 truncate" title="Database IT Inventory">
+                    {dbStatus.database || "Database IT Inventory"}
+                  </span>
                 </div>
               </div>
 
-              {/* Response Time */}
-              <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
-                <Activity className="h-5 w-5 text-muted-foreground mt-0.5" />
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">
-                    Response Time
-                  </p>
-                  <p className="text-base font-semibold">
-                    {dbStatus.responseTime
-                      ? `${dbStatus.responseTime} ms`
-                      : "-"}
-                  </p>
+              <div className="p-3 rounded-lg bg-slate-50 border border-slate-200/60">
+                <p className="text-[11px] font-medium text-slate-400 mb-1">Latensi / Ping</p>
+                <div className="flex items-center gap-1.5">
+                  <Activity className="w-4 h-4 text-slate-500" />
+                  <span className="text-xs font-semibold text-slate-800">
+                    {dbStatus.responseTime ? `${dbStatus.responseTime} ms` : "-"}
+                  </span>
                 </div>
               </div>
             </div>
 
-            {/* Message */}
-            <Alert
-              className={`mt-4 ${
-                dbStatus.status === "connected"
-                  ? "bg-green-50 border-green-200"
-                  : dbStatus.status === "disconnected"
-                    ? "bg-red-50 border-red-200"
-                    : "bg-yellow-50 border-yellow-200"
-              }`}
-            >
-              {dbStatus.status === "connected" && (
-                <CheckCircle2 className="h-4 w-4 text-green-600" />
-              )}
-              {dbStatus.status === "disconnected" && (
-                <XCircle className="h-4 w-4 text-red-600" />
-              )}
-              {dbStatus.status === "checking" && (
-                <AlertCircle className="h-4 w-4 text-yellow-600" />
-              )}
-              <AlertDescription
-                className={
-                  dbStatus.status === "connected"
-                    ? "text-green-700"
-                    : dbStatus.status === "disconnected"
-                      ? "text-red-700"
-                      : "text-yellow-700"
-                }
-              >
-                {dbStatus.message}
-              </AlertDescription>
-            </Alert>
-
-            {/* Last Checked */}
-            <div className="flex justify-between items-center mt-4 text-xs text-muted-foreground">
-              <span>Terakhir diperiksa: {dbStatus.timestamp}</span>
-              <span className="text-xs">Interval: 30 detik</span>
-            </div>
+            {dbStatus.status === "disconnected" && (
+              <div className="mt-3 p-3 rounded-lg bg-red-50 border border-red-200 text-xs text-red-700 flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                <span>{dbStatus.message}</span>
+              </div>
+            )}
           </CardContent>
         </Card>
 
-     
-
-        {/* Welcome Message */}
-        <Card>
-          <CardContent className="p-6">
-            <div className="text-center">
-              <h2 className="text-xl font-semibold mb-2">
-            
-                Welcome to the Home Dashboard
-              </h2>
-              <p className="text-gray-600">
-                Sistem Inventory Beacukai - Pantau stok barang dengan mudah dan
-                efisien
-              </p>
-            </div>
-          </CardContent>
-        </Card>
+        {/* Informasi Sistem & Kepatuhan */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="bg-white border border-slate-200/80 rounded-xl p-4.5 shadow-2xs">
+            <h3 className="text-xs font-semibold text-slate-900 mb-1">IT Inventory Bea Cukai</h3>
+            <p className="text-xs text-slate-500 leading-relaxed">
+              Memenuhi standar pencatatan pertanggungjawaban Kawasan Berikat sesuai regulasi DJBC.
+            </p>
+          </div>
+          <div className="bg-white border border-slate-200/80 rounded-xl p-4.5 shadow-2xs">
+            <h3 className="text-xs font-semibold text-slate-900 mb-1">Navigasi Transaksi</h3>
+            <p className="text-xs text-slate-500 leading-relaxed">
+              Gunakan menu di bilah atas (Navbar) untuk mengakses Pemasukan, Pengeluaran, Mutasi, dan Log.
+            </p>
+          </div>
+          <div className="bg-white border border-slate-200/80 rounded-xl p-4.5 shadow-2xs">
+            <h3 className="text-xs font-semibold text-slate-900 mb-1">Audit Trail & Keamanan</h3>
+            <p className="text-xs text-slate-500 leading-relaxed">
+              Setiap aktivitas masuk, keluar, serta mutasi stok terekam secara otomatis ke dalam sistem log.
+            </p>
+          </div>
+        </div>
       </div>
     </div>
   );
 }
+

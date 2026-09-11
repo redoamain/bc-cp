@@ -526,98 +526,104 @@ export default function PemasukanPage() {
         />
 
         {/* Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <Card className="border border-slate-200/80 shadow-xs bg-white">
+            <CardHeader className="flex flex-row items-center justify-between pb-2 pt-4 px-4.5">
+              <CardTitle className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
                 Total Transaksi
               </CardTitle>
-              <FileSpreadsheet className="h-4 w-4 text-muted-foreground" />
+              <div className="w-7 h-7 rounded-lg bg-slate-100 flex items-center justify-center text-slate-600 border border-slate-200/60">
+                <FileSpreadsheet className="h-3.5 w-3.5" />
+              </div>
             </CardHeader>
-            <CardContent>
-              <p className="text-2xl font-bold">{filteredData.length}</p>
-              <p className="text-xs text-muted-foreground mt-1">
-                Dari total {data.length} data
+            <CardContent className="px-4.5 pb-4 pt-0">
+              <p className="text-2xl font-bold tracking-tight text-slate-900">{filteredData.length}</p>
+              <p className="text-xs text-slate-500 mt-1">
+                Dari total {data.length} item data
               </p>
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
+          <Card className="border border-slate-200/80 shadow-xs bg-white">
+            <CardHeader className="flex flex-row items-center justify-between pb-2 pt-4 px-4.5">
+              <CardTitle className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
                 Total Quantity
               </CardTitle>
-              <Package className="h-4 w-4 text-muted-foreground" />
+              <div className="w-7 h-7 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600 border border-blue-100">
+                <Package className="h-3.5 w-3.5" />
+              </div>
             </CardHeader>
-            <CardContent>
-              <p className="text-2xl font-bold">
+            <CardContent className="px-4.5 pb-4 pt-0">
+              <p className="text-2xl font-bold tracking-tight text-slate-900">
                 {totalJumlah.toLocaleString()}
               </p>
-              <p className="text-xs text-muted-foreground mt-1">
+              <p className="text-xs text-slate-500 mt-1">
                 Total jumlah barang masuk
               </p>
             </CardContent>
           </Card>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
-                  Total USD
-                </CardTitle>
-                <DollarSign className="h-4 w-4 text-blue-500" />
-              </CardHeader>
-              <CardContent>
-                <p className="text-2xl font-bold text-blue-600">
-                  {new Intl.NumberFormat("en-US", {
-                    style: "currency",
-                    currency: "USD",
-                    minimumFractionDigits: 2,
-                  }).format(totalUSD)}
+          <Card className="border border-slate-200/80 shadow-xs bg-white">
+            <CardHeader className="flex flex-row items-center justify-between pb-2 pt-4 px-4.5">
+              <CardTitle className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                Total Nilai USD
+              </CardTitle>
+              <div className="w-7 h-7 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600 border border-blue-100">
+                <DollarSign className="h-3.5 w-3.5" />
+              </div>
+            </CardHeader>
+            <CardContent className="px-4.5 pb-4 pt-0">
+              <p className="text-2xl font-bold tracking-tight text-blue-600">
+                {new Intl.NumberFormat("en-US", {
+                  style: "currency",
+                  currency: "USD",
+                  minimumFractionDigits: 2,
+                }).format(totalUSD)}
+              </p>
+              <div className="flex justify-between items-center mt-1">
+                <p className="text-xs text-slate-500">
+                  {countUSD} transaksi
                 </p>
-                <div className="flex justify-between items-center mt-1">
-                  <p className="text-xs text-muted-foreground">
-                    {countUSD} transaksi
-                  </p>
-                  <Badge
-                    variant="outline"
-                    className="bg-blue-50 text-blue-700 border-blue-200"
-                  >
-                    USD
-                  </Badge>
-                </div>
-              </CardContent>
-            </Card>
+                <Badge
+                  variant="outline"
+                  className="text-[10px] font-medium bg-blue-50 text-blue-700 border-blue-200"
+                >
+                  USD
+                </Badge>
+              </div>
+            </CardContent>
+          </Card>
 
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
-                  Total IDR
-                </CardTitle>
-                <DollarSign className="h-4 w-4 text-green-500" />
-              </CardHeader>
-              <CardContent>
-                <p className="text-2xl font-bold text-green-600">
-                  {new Intl.NumberFormat("id-ID", {
-                    style: "currency",
-                    currency: "IDR",
-                    minimumFractionDigits: 2,
-                  }).format(totalIDR)}
+          <Card className="border border-slate-200/80 shadow-xs bg-white">
+            <CardHeader className="flex flex-row items-center justify-between pb-2 pt-4 px-4.5">
+              <CardTitle className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                Total Nilai IDR
+              </CardTitle>
+              <div className="w-7 h-7 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-600 border border-emerald-100">
+                <DollarSign className="h-3.5 w-3.5" />
+              </div>
+            </CardHeader>
+            <CardContent className="px-4.5 pb-4 pt-0">
+              <p className="text-2xl font-bold tracking-tight text-emerald-600">
+                {new Intl.NumberFormat("id-ID", {
+                  style: "currency",
+                  currency: "IDR",
+                  minimumFractionDigits: 2,
+                }).format(totalIDR)}
+              </p>
+              <div className="flex justify-between items-center mt-1">
+                <p className="text-xs text-slate-500">
+                  {countIDR} transaksi
                 </p>
-                <div className="flex justify-between items-center mt-1">
-                  <p className="text-xs text-muted-foreground">
-                    {countIDR} transaksi
-                  </p>
-                  <Badge
-                    variant="outline"
-                    className="bg-green-50 text-green-700 border-green-200"
-                  >
-                    IDR
-                  </Badge>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+                <Badge
+                  variant="outline"
+                  className="text-[10px] font-medium bg-emerald-50 text-emerald-700 border-emerald-200"
+                >
+                  IDR
+                </Badge>
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Error Alert */}
@@ -628,8 +634,8 @@ export default function PemasukanPage() {
         )}
 
         {/* DataTable */}
-        <Card>
-          <CardContent className="p-6">
+        <Card className="border border-slate-200/80 shadow-xs bg-white overflow-hidden">
+          <CardContent className="p-4 sm:p-6">
             {loading ? (
               <div className="flex items-center justify-center h-64">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>

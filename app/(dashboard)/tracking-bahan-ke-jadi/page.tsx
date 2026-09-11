@@ -787,109 +787,127 @@ export default function TrackingBahanKeJadiPage() {
         />
 
         {/* Info Card - Panduan */}
-        <Card className="border-2 border-dashed border-muted-foreground/20">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Info className="h-5 w-5 text-primary" />
-              Panduan Tracking Bahan Baku → Barang Jadi
-            </CardTitle>
+        <Card className="border border-slate-200/80 shadow-xs bg-white">
+          <CardHeader className="pb-3 pt-4 px-5">
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-lg bg-slate-100 flex items-center justify-center text-slate-700 border border-slate-200/60">
+                <Info className="h-3.5 w-3.5" />
+              </div>
+              <CardTitle className="text-sm font-semibold text-slate-900">
+                Panduan Tracking Bahan Baku → Barang Jadi
+              </CardTitle>
+            </div>
           </CardHeader>
-          <CardContent>
+          <CardContent className="px-5 pb-5 pt-0">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-              <div className="flex items-start gap-2 p-2 rounded-lg bg-blue-50">
-                <Package className="h-4 w-4 text-blue-600 mt-0.5" />
+              <div className="flex items-start gap-2.5 p-3 rounded-lg bg-slate-50 border border-slate-200/60">
+                <Package className="h-4 w-4 text-blue-600 mt-0.5 shrink-0" />
                 <div>
-                  <p className="font-medium text-sm">Kode & Nama Bahan</p>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="font-semibold text-xs text-slate-800">Kode & Nama Bahan</p>
+                  <p className="text-[11px] text-slate-500">
                     Identitas bahan baku yang dilacak
                   </p>
                 </div>
               </div>
-              <div className="flex items-start gap-2 p-2 rounded-lg bg-green-50">
-                <PlusCircle className="h-4 w-4 text-green-600 mt-0.5" />
+              <div className="flex items-start gap-2.5 p-3 rounded-lg bg-slate-50 border border-slate-200/60">
+                <PlusCircle className="h-4 w-4 text-emerald-600 mt-0.5 shrink-0" />
                 <div>
-                  <p className="font-medium text-sm">Masuk & Stok</p>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="font-semibold text-xs text-slate-800">Masuk & Stok</p>
+                  <p className="text-[11px] text-slate-500">
                     Jumlah masuk, stok awal, dan total tersedia
                   </p>
                 </div>
               </div>
-              <div className="flex items-start gap-2 p-2 rounded-lg bg-purple-50">
-                <MinusCircle className="h-4 w-4 text-purple-600 mt-0.5" />
+              <div className="flex items-start gap-2.5 p-3 rounded-lg bg-slate-50 border border-slate-200/60">
+                <MinusCircle className="h-4 w-4 text-purple-600 mt-0.5 shrink-0" />
                 <div>
-                  <p className="font-medium text-sm">Pemakaian</p>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="font-semibold text-xs text-slate-800">Pemakaian</p>
+                  <p className="text-[11px] text-slate-500">
                     Total terpakai dan persentase pemakaian
                   </p>
                 </div>
               </div>
-              <div className="flex items-start gap-2 p-2 rounded-lg bg-orange-50">
-                <TrendingUp className="h-4 w-4 text-orange-600 mt-0.5" />
+              <div className="flex items-start gap-2.5 p-3 rounded-lg bg-slate-50 border border-slate-200/60">
+                <TrendingUp className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
                 <div>
-                  <p className="font-medium text-sm">Detail Produksi</p>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="font-semibold text-xs text-slate-800">Detail Produksi</p>
+                  <p className="text-[11px] text-slate-500">
                     Rincian pemakaian di setiap produksi
                   </p>
                 </div>
               </div>
-              <div className="flex items-start gap-2 p-2 rounded-lg bg-emerald-50">
-                <Package className="h-4 w-4 text-emerald-600 mt-0.5" />
+              <div className="flex items-start gap-2.5 p-3 rounded-lg bg-slate-50 border border-slate-200/60">
+                <Package className="h-4 w-4 text-emerald-600 mt-0.5 shrink-0" />
                 <div>
-                  <p className="font-medium text-sm">Barang Jadi</p>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="font-semibold text-xs text-slate-800">Barang Jadi</p>
+                  <p className="text-[11px] text-slate-500">
                     Hasil produksi dari bahan baku
                   </p>
                 </div>
               </div>
             </div>
-        
           </CardContent>
         </Card>
 
         {/* Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-xs font-medium">Total Bahan</CardTitle>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <Card className="border border-slate-200/80 shadow-xs bg-white">
+            <CardHeader className="flex flex-row items-center justify-between pb-2 pt-4 px-4.5">
+              <CardTitle className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total Bahan</CardTitle>
+              <div className="w-7 h-7 rounded-lg bg-slate-100 flex items-center justify-center text-slate-600 border border-slate-200/60">
+                <Package className="h-3.5 w-3.5" />
+              </div>
             </CardHeader>
-            <CardContent>
-              <p className="text-xl font-bold">{summary.total_bahan || 0}</p>
-              <p className="text-xs text-muted-foreground">Item bahan baku</p>
+            <CardContent className="px-4.5 pb-4 pt-0">
+              <p className="text-2xl font-bold tracking-tight text-slate-900">{summary.total_bahan || 0}</p>
+              <p className="text-xs text-slate-500 mt-1">Item bahan baku</p>
             </CardContent>
           </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-xs font-medium">Total Masuk</CardTitle>
+
+          <Card className="border border-slate-200/80 shadow-xs bg-white">
+            <CardHeader className="flex flex-row items-center justify-between pb-2 pt-4 px-4.5">
+              <CardTitle className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total Masuk</CardTitle>
+              <div className="w-7 h-7 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600 border border-blue-100">
+                <PlusCircle className="h-3.5 w-3.5" />
+              </div>
             </CardHeader>
-            <CardContent>
-              <p className="text-2xl font-bold text-blue-600">
+            <CardContent className="px-4.5 pb-4 pt-0">
+              <p className="text-2xl font-bold tracking-tight text-blue-600">
                 {(summary.total_jumlah_masuk || 0).toLocaleString()}
               </p>
-              <p className="text-xs text-muted-foreground"></p>
+              <p className="text-xs text-slate-500 mt-1">Jumlah kuantitas masuk</p>
             </CardContent>
           </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-xs font-medium">
+
+          <Card className="border border-slate-200/80 shadow-xs bg-white">
+            <CardHeader className="flex flex-row items-center justify-between pb-2 pt-4 px-4.5">
+              <CardTitle className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
                 Total Terpakai
               </CardTitle>
+              <div className="w-7 h-7 rounded-lg bg-purple-50 flex items-center justify-center text-purple-600 border border-purple-100">
+                <MinusCircle className="h-3.5 w-3.5" />
+              </div>
             </CardHeader>
-            <CardContent>
-              <p className="text-2xl font-bold text-purple-600">
+            <CardContent className="px-4.5 pb-4 pt-0">
+              <p className="text-2xl font-bold tracking-tight text-purple-600">
                 {(summary.total_terpakai || 0).toLocaleString()}
               </p>
-              <p className="text-xs text-muted-foreground"></p>
+              <p className="text-xs text-slate-500 mt-1">Bahan digunakan produksi</p>
             </CardContent>
           </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-xs font-medium">Barang Jadi</CardTitle>
+
+          <Card className="border border-slate-200/80 shadow-xs bg-white">
+            <CardHeader className="flex flex-row items-center justify-between pb-2 pt-4 px-4.5">
+              <CardTitle className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Barang Jadi</CardTitle>
+              <div className="w-7 h-7 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-600 border border-emerald-100">
+                <TrendingUp className="h-3.5 w-3.5" />
+              </div>
             </CardHeader>
-            <CardContent>
-              <p className="text-2xl font-bold text-green-600">
+            <CardContent className="px-4.5 pb-4 pt-0">
+              <p className="text-2xl font-bold tracking-tight text-emerald-600">
                 {(summary.total_barang_jadi || 0).toLocaleString()}
               </p>
-              <p className="text-xs text-muted-foreground"></p>
+              <p className="text-xs text-slate-500 mt-1">Total hasil barang jadi</p>
             </CardContent>
           </Card>
         </div>
@@ -903,8 +921,8 @@ export default function TrackingBahanKeJadiPage() {
         )}
 
         {/* Data Table */}
-        <Card>
-          <CardContent className="p-6">
+        <Card className="border border-slate-200/80 shadow-xs bg-white overflow-hidden">
+          <CardContent className="p-4 sm:p-6">
             {loading ? (
               <div className="flex items-center justify-center h-64">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
