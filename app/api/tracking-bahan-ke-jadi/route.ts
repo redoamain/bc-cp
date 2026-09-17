@@ -50,28 +50,6 @@ export async function GET(request: Request) {
     const pemasukanData = pemasukanResult.recordset;
     console.log(`📦 Pemasukan data raw: ${pemasukanData.length} records`);
 
-    // 1b. Query penerimaan barang masuk dari taOpnameIDT (LPB / Opname / Internal Masuk)
-    const idtQuery = `
-      SELECT 
-        dt.[MoveID],
-        dt.[MoveType],
-        CONVERT(DATE, dt.[MoveDate]) AS Tanggal_Masuk,
-        dt.[LocID],
-        dt.[ItemID],
-        dt.[Kgs] AS Jumlah,
-        COALESCE(dt.[Satuan], g.[SatuanKecil], 'KG') AS Satuan,
-        dt.[username],
-        hd.[Remark],
-        hd.[DocID],
-        COALESCE(g.[ItemName], g.[namebc], dt.[ItemID]) AS NamaBarang
-      FROM [cp].[dbo].[taOpnameIDT] AS dt
-      LEFT JOIN [cp].[dbo].[taOpnameIHD] AS hd 
-        ON dt.[MoveID] = hd.[MoveID] AND dt.[MoveType] = hd.[MoveType]
-      LEFT JOIN [cp].[dbo].[taGoods] AS g
-        ON dt.[ItemID] = g.[ItemID]
-      WHERE dt.[Kgs] > 0
-    `;
-
     // 2. Ambil data BAHAN dari produksi SPK (ItemType = 'B') disertai Satuan dari taGoods
     const bahanQuery = `
       SELECT 
@@ -140,7 +118,6 @@ export async function GET(request: Request) {
 
     let bahanData = [];
     let penggunaanNonSPKData = [];
-    let idtData = [];
     let hasilData = [];
 
     // PERBAIKAN TEMPORAL MISMATCH:
@@ -170,16 +147,6 @@ export async function GET(request: Request) {
         AND CONVERT(DATE, hd.[MoveDate]) >= @StartDate
       `);
       penggunaanNonSPKData = nonSPKResult.recordset;
-
-      const reqIDT = pool.request();
-      reqIDT.input("StartDate", sql.Date, new Date(startDate));
-      reqIDT.input("EndDate", sql.Date, new Date(endDate || startDate));
-      const idtResult = await reqIDT.query(`
-        ${idtQuery}
-        AND CONVERT(DATE, dt.[MoveDate]) >= @StartDate
-        AND CONVERT(DATE, dt.[MoveDate]) <= @EndDate
-      `);
-      idtData = idtResult.recordset;
     } else {
       const bahanResult = await pool.request().query(bahanQuery);
       bahanData = bahanResult.recordset;
@@ -189,9 +156,6 @@ export async function GET(request: Request) {
 
       const nonSPKResult = await pool.request().query(penggunaanNonSPKQuery);
       penggunaanNonSPKData = nonSPKResult.recordset;
-
-      const idtResult = await pool.request().query(idtQuery);
-      idtData = idtResult.recordset;
     }
 
     // Urutkan data berdasarkan tanggal produksi / transaksi
@@ -212,7 +176,7 @@ export async function GET(request: Request) {
     );
 
     console.log(
-      `📊 Bahan SPK: ${bahanData.length}, Penggunaan Non-SPK: ${penggunaanNonSPKData.length}, Hasil: ${hasilData.length}, IDT: ${idtData.length}`,
+      `📊 Bahan SPK: ${bahanData.length}, Penggunaan Non-SPK: ${penggunaanNonSPKData.length}, Hasil: ${hasilData.length}`,
     );
 
     // 4a. Group bahan SPK berdasarkan ItemID_Bahan (HANYA yang Jumlah > 0)
@@ -400,79 +364,8 @@ export async function GET(request: Request) {
       }
     }
 
-    // 6b. Agregasi penerimaan barang masuk dari taOpnameIDT (LPB / Opname / Internal Masuk)
-    for (const row of idtData) {
-      const itemId = String(row.ItemID || "").trim();
-      if (!itemId) continue;
-
-      const jumlah = Number(row.Jumlah) || 0;
-      const satuan = normalizeSatuan(row.Satuan) || "KG";
-      const nomorBPB = `LPB-${row.MoveID}`;
-      const tanggalBPB = row.Tanggal_Masuk
-        ? new Date(row.Tanggal_Masuk).toISOString().split("T")[0]
-        : null;
-      const pemasok = String(row.Remark || row.LocID || "INTERNAL").trim();
-      const jenisDokumen = row.MoveType === "R" ? "MUTASI MASUK" : "LPB";
-      const namaBahan = String(row.NamaBarang || itemId).trim();
-      const nomorPO = String(row.DocID || "").trim();
-      const nomorDokumen = String(row.MoveID || "").trim();
-
-      if (!pemasukanGrouped.has(itemId)) {
-        pemasukanGrouped.set(itemId, {
-          itemId,
-          namaBahan: namaBahan !== "-" ? namaBahan : itemId,
-          satuan: satuan,
-          totalJumlahMasuk: jumlah,
-          daftarPemasukan: [
-            {
-              nomorBPB,
-              tanggalBPB,
-              jumlah,
-              satuan,
-              pemasok,
-              jenisDokumen,
-              nomorPO,
-              nomorDokumen,
-            },
-          ],
-          nomorBPBList: [nomorBPB],
-          tanggalBPBList: tanggalBPB ? [tanggalBPB] : [],
-          pemasokList: pemasok ? [pemasok] : [],
-          jenisDokumenList: [jenisDokumen],
-        });
-      } else {
-        const entry = pemasukanGrouped.get(itemId)!;
-        // Jika bukan mutasi gudang internal ('R'), tambahkan ke totalJumlahMasuk
-        if (row.MoveType !== "R") {
-          entry.totalJumlahMasuk += jumlah;
-        }
-        entry.daftarPemasukan.push({
-          nomorBPB,
-          tanggalBPB,
-          jumlah,
-          satuan,
-          pemasok,
-          jenisDokumen,
-          nomorPO,
-          nomorDokumen,
-        });
-        if (nomorBPB && !entry.nomorBPBList.includes(nomorBPB)) {
-          entry.nomorBPBList.push(nomorBPB);
-        }
-        if (tanggalBPB && !entry.tanggalBPBList.includes(tanggalBPB)) {
-          entry.tanggalBPBList.push(tanggalBPB);
-        }
-        if (pemasok && !entry.pemasokList.includes(pemasok)) {
-          entry.pemasokList.push(pemasok);
-        }
-        if (jenisDokumen && !entry.jenisDokumenList.includes(jenisDokumen)) {
-          entry.jenisDokumenList.push(jenisDokumen);
-        }
-      }
-    }
-
     console.log(
-      `📦 Agregasi bahan unik: ${pemasukanGrouped.size} dari ${pemasukanData.length} records BPB & ${idtData.length} records IDT`,
+      `📦 Agregasi bahan unik: ${pemasukanGrouped.size} dari ${pemasukanData.length} records BPB (Pembelian)`,
     );
 
     // 7. Fungsi get stock dengan port awareness dan timeout aman
