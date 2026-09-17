@@ -43,6 +43,7 @@ interface ProduksiUsage {
 
 interface BarangJadi {
   ProdID_Hasil: string;
+  Departemen?: string;
   ItemID: string;
   NamaBarang: string;
   Satuan?: string;
@@ -277,6 +278,11 @@ const BarangJadiList = ({
                     <span className="font-mono font-semibold text-emerald-800 bg-emerald-100/80 px-1.5 py-0.5 rounded text-[11px]">
                       {bj.ItemID || "-"}
                     </span>
+                    {bj.Departemen && bj.Departemen !== "-" && (
+                      <span className="font-mono text-[10px] font-semibold bg-emerald-700 text-white px-1.5 py-0.5 rounded shadow-2xs">
+                        {bj.Departemen}
+                      </span>
+                    )}
                     {bj.NamaBarang &&
                       bj.NamaBarang !== "-" &&
                       bj.NamaBarang !== bj.ItemID && (
@@ -703,6 +709,10 @@ export default function TrackingBahanKeJadiPage() {
         ) {
           barangJadiText = item.MenghasilkanBarangJadi.map((bj) => {
             const kode = bj.ItemID || "-";
+            const dept =
+              bj.Departemen && bj.Departemen !== "-"
+                ? ` [${bj.Departemen}]`
+                : "";
             const nama =
               bj.NamaBarang && bj.NamaBarang !== "-" && bj.NamaBarang !== kode
                 ? ` - ${bj.NamaBarang}`
@@ -714,7 +724,7 @@ export default function TrackingBahanKeJadiPage() {
             const spk =
               bj.SPK && bj.SPK !== "-" ? ` | SPK: ${bj.SPK}` : "";
             const tgl = formatTgl(bj.Tanggal_Produksi);
-            return `• [${kode}]${nama}: ${jumlah} ${unit}${spk} | Tgl: ${tgl}`;
+            return `• [${kode}]${dept}${nama}: ${jumlah} ${unit}${spk} | Tgl: ${tgl}`;
           }).join("\n");
         }
 
@@ -868,6 +878,7 @@ export default function TrackingBahanKeJadiPage() {
         "Satuan Pemakaian",
         "PIC Pemakaian",
         "Kode Barang Jadi",
+        "Dept Hasil",
         "Nama Barang Jadi",
         "Hasil Jadi (Qty)",
         "Satuan Hasil",
@@ -907,6 +918,7 @@ export default function TrackingBahanKeJadiPage() {
             "-",
             0,
             satuanBahan,
+            "-",
             "-",
             "-",
             "(Belum digunakan di produksi)",
@@ -950,6 +962,7 @@ export default function TrackingBahanKeJadiPage() {
                 satProd,
                 picBahan,
                 "-",
+                "-",
                 "(Dalam proses produksi / WIP)",
                 0,
                 "-",
@@ -982,6 +995,7 @@ export default function TrackingBahanKeJadiPage() {
                   satProd,
                   picBahan,
                   bj.ItemID || "-",
+                  bj.Departemen || "-",
                   bj.NamaBarang || bj.ItemID || "-",
                   qtyBJ,
                   bj.Satuan || "PCS",
@@ -1012,6 +1026,7 @@ export default function TrackingBahanKeJadiPage() {
           "",
           "",
           "",
+          "",
           totalBarangJadiDetail,
           "",
           "",
@@ -1035,7 +1050,7 @@ export default function TrackingBahanKeJadiPage() {
       const ws2 = XLSX.utils.aoa_to_sheet(ws2Data);
 
       if (!ws2["!merges"]) ws2["!merges"] = [];
-      const sheet2LastCol = 18;
+      const sheet2LastCol = 19;
 
       ws2["!merges"].push({ s: { r: 0, c: 0 }, e: { r: 0, c: sheet2LastCol } });
       ws2["!merges"].push({ s: { r: 1, c: 0 }, e: { r: 1, c: sheet2LastCol } });
@@ -1067,6 +1082,7 @@ export default function TrackingBahanKeJadiPage() {
         { wch: 14 }, // Satuan Pemakaian
         { wch: 16 }, // PIC Pemakaian
         { wch: 18 }, // Kode Barang Jadi
+        { wch: 12 }, // Dept Hasil
         { wch: 32 }, // Nama Barang Jadi
         { wch: 20 }, // Hasil Jadi (Qty)
         { wch: 14 }, // Satuan Hasil

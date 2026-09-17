@@ -56,10 +56,11 @@ export async function GET(request: Request) {
       WHERE dt.[ItemType] = 'B'
     `;
 
-    // 3. Ambil data BARANG JADI (ItemType = 'H') disertai Nama Barang dan Satuan dari taGoods
+    // 3. Ambil data BARANG JADI (ItemType = 'H') - HANYA DARI DEPARTEMEN AS (ASSEMBLY) & PL (PLATING)
     const hasilQuery = `
       SELECT 
         hd.[ProdID] AS ProdID_Hasil,
+        COALESCE(hd.[DeptID], hd.[ProdType]) AS Departemen_Hasil,
         hd.[OrderID] AS SPK,
         CONVERT(DATE, hd.[ProdDate]) AS Tanggal_Hasil,
         dt.[ItemID] AS ItemID_Hasil,
@@ -73,6 +74,7 @@ export async function GET(request: Request) {
       LEFT JOIN [cp].[dbo].[taGoods] AS g
         ON dt.[ItemID] = g.[ItemID]
       WHERE dt.[ItemType] = 'H'
+        AND (hd.[ProdType] IN ('AS', 'PL') OR hd.[DeptID] IN ('AS', 'PL'))
     `;
 
     let bahanData = [];
@@ -147,6 +149,8 @@ export async function GET(request: Request) {
       const prodId = item.ProdID_Hasil;
       const hasilObj = {
         ProdID_Hasil: item.ProdID_Hasil || "-",
+        Departemen_Hasil:
+          item.Departemen_Hasil || item.ProdType || item.DeptID || "-",
         ItemID_Hasil: item.ItemID_Hasil || "-",
         NamaBarang_Hasil: item.NamaBarang_Hasil || item.ItemID_Hasil || "-",
         Satuan_Hasil: normalizeSatuan(item.Satuan_Hasil) || "PCS",
@@ -319,9 +323,10 @@ export async function GET(request: Request) {
           0,
         );
 
-        // Cari barang jadi yang dihasilkan dari SPK/ProdID yang SAMA dengan pemakaian
+        // Cari barang jadi yang dihasilkan dari SPK/ProdID yang SAMA dengan pemakaian (Hanya Dept AS & PL)
         const semuaBarangJadi: Array<{
           ProdID_Hasil: string;
+          Departemen?: string;
           ItemID: string;
           NamaBarang: string;
           Satuan: string;
@@ -349,6 +354,7 @@ export async function GET(request: Request) {
               barangJadiKeySet.add(key);
               semuaBarangJadi.push({
                 ProdID_Hasil: hasil.ProdID_Hasil,
+                Departemen: hasil.Departemen_Hasil || "-",
                 ItemID: hasil.ItemID_Hasil,
                 NamaBarang:
                   hasil.NamaBarang_Hasil || hasil.ItemID_Hasil || "-",
@@ -371,6 +377,7 @@ export async function GET(request: Request) {
                 barangJadiKeySet.add(key);
                 semuaBarangJadi.push({
                   ProdID_Hasil: hasil.ProdID_Hasil,
+                  Departemen: hasil.Departemen_Hasil || "-",
                   ItemID: hasil.ItemID_Hasil,
                   NamaBarang:
                     hasil.NamaBarang_Hasil || hasil.ItemID_Hasil || "-",
