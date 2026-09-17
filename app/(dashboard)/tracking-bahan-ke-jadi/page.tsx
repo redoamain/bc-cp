@@ -272,12 +272,21 @@ const BarangJadiList = ({
                 key={idx}
                 className="border-b border-emerald-100 pb-2 last:border-0 last:pb-0"
               >
-                <div className="font-semibold text-emerald-900 leading-tight">
-                  {bj.NamaBarang && bj.NamaBarang !== "-"
-                    ? bj.NamaBarang
-                    : bj.ItemID}
+                <div className="leading-tight">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="font-mono font-semibold text-emerald-800 bg-emerald-100/80 px-1.5 py-0.5 rounded text-[11px]">
+                      {bj.ItemID || "-"}
+                    </span>
+                    {bj.NamaBarang &&
+                      bj.NamaBarang !== "-" &&
+                      bj.NamaBarang !== bj.ItemID && (
+                        <span className="font-medium text-slate-800 text-xs">
+                          {bj.NamaBarang}
+                        </span>
+                      )}
+                  </div>
                 </div>
-                <div className="flex items-center justify-between text-slate-500 mt-1">
+                <div className="flex items-center justify-between text-slate-500 mt-1.5">
                   <span className="text-[11px] font-mono">
                     SPK: {bj.SPK || "-"}
                   </span>
@@ -693,7 +702,11 @@ export default function TrackingBahanKeJadiPage() {
           item.MenghasilkanBarangJadi.length > 0
         ) {
           barangJadiText = item.MenghasilkanBarangJadi.map((bj) => {
-            const nama = bj.NamaBarang || bj.ItemID || "-";
+            const kode = bj.ItemID || "-";
+            const nama =
+              bj.NamaBarang && bj.NamaBarang !== "-" && bj.NamaBarang !== kode
+                ? ` - ${bj.NamaBarang}`
+                : "";
             const jumlah = (bj.Jumlah || bj.Jumlah_Kgs || 0).toLocaleString(
               "id-ID",
             );
@@ -701,7 +714,7 @@ export default function TrackingBahanKeJadiPage() {
             const spk =
               bj.SPK && bj.SPK !== "-" ? ` | SPK: ${bj.SPK}` : "";
             const tgl = formatTgl(bj.Tanggal_Produksi);
-            return `• ${nama}: ${jumlah} ${unit}${spk} | Tgl: ${tgl}`;
+            return `• [${kode}]${nama}: ${jumlah} ${unit}${spk} | Tgl: ${tgl}`;
           }).join("\n");
         }
 
