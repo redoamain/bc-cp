@@ -402,7 +402,7 @@ export async function GET(request: Request) {
     // 8. Proses setiap item bahan unik secara concurrent
     const groupedItems = Array.from(pemasukanGrouped.values());
 
-    const finalData = await Promise.all(
+    const finalDataRaw = await Promise.all(
       groupedItems.map(async (group) => {
         const itemId = group.itemId;
         const spkList = bahanSPKByItem.get(itemId) || [];
@@ -489,31 +489,12 @@ export async function GET(request: Request) {
                 });
               }
             }
-
-            // 2. Jika tidak ada hasil pada ProdID tersebut, cocokkan berdasarkan nomor SPK
-            if (hasilListByProdID.length === 0 && spk && spk !== "-") {
-              const hasilListBySPK = hasilBySPK.get(spk) || [];
-              for (const hasil of hasilListBySPK) {
-                const key = `${hasil.ProdID_Hasil}_${hasil.ItemID_Hasil}_${hasil.SPK}`;
-                if (!barangJadiKeySet.has(key)) {
-                  barangJadiKeySet.add(key);
-                  semuaBarangJadi.push({
-                    ProdID_Hasil: hasil.ProdID_Hasil,
-                    Departemen: hasil.Departemen_Hasil || "-",
-                    ItemID: hasil.ItemID_Hasil,
-                    NamaBarang:
-                      hasil.NamaBarang_Hasil || hasil.ItemID_Hasil || "-",
-                    Satuan: hasil.Satuan_Hasil || "PCS",
-                    Jumlah: hasil.Jumlah_Hasil || 0,
-                    Jumlah_Kgs: hasil.Jumlah_Hasil || 0,
-                    Tanggal_Produksi: hasil.Tanggal_Hasil,
-                    SPK: spk,
-                    PIC_Hasil: hasil.PIC_Hasil,
-                  });
-                }
-              }
-            }
           }
+        }
+
+        // HANYA TAMPILKAN BAHAN YANG MENGHASILKAN BARANG JADI (K02)
+        if (semuaBarangJadi.length === 0) {
+          return null;
         }
 
         // Ambil stok
@@ -608,6 +589,9 @@ export async function GET(request: Request) {
         };
       }),
     );
+
+    // Filter hanya bahan baku yang benar-benar menghasilkan barang jadi
+    const finalData = finalDataRaw.filter(Boolean) as any[];
 
     // 9. Rincian per satuan masuk untuk summary card
     const breakdownMasuk: Record<string, number> = {};

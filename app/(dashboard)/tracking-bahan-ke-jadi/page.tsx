@@ -477,50 +477,7 @@ const columns: ColumnDef<TrackingItem>[] = [
       );
     },
   },
-  {
-    id: "pemakaian",
-    header: "Pemakaian",
-    size: 180,
-    cell: ({ row }) => {
-      const item = row.original;
-      const isOver = item.IsOverUsed || false;
-      const totalTerpakai =
-        item.TotalTerpakai !== undefined
-          ? item.TotalTerpakai
-          : item.TotalKgsTerpakai || 0;
-      const totalTersedia = item.TotalStokTersedia || 0;
-      const persentase = item.PersentaseTerpakai || 0;
-      const safePersentase = Math.min(persentase, 100);
 
-      if (totalTerpakai === 0 && totalTersedia === 0) {
-        return (
-          <span className="text-gray-400 text-xs">Belum ada pemakaian</span>
-        );
-      }
-
-      return (
-        <div className="space-y-1">
-          <div className="flex justify-between text-xs">
-            <span className={isOver ? "text-red-600 font-bold" : ""}>
-              {totalTerpakai.toLocaleString()} /{" "}
-              {totalTersedia.toLocaleString()} {item.Satuan || ""}
-            </span>
-            <span className={isOver ? "text-red-600 font-bold" : ""}>
-              {persentase}%
-            </span>
-          </div>
-          <div className="relative w-full h-2 bg-gray-200 rounded-full overflow-hidden">
-            <div
-              className={`absolute top-0 left-0 h-full rounded-full transition-all ${
-                isOver ? "bg-red-500" : "bg-blue-500"
-              }`}
-              style={{ width: `${safePersentase}%` }}
-            />
-          </div>
-        </div>
-      );
-    },
-  },
   {
     id: "produksi_detail",
     header: "Detail Produksi",
@@ -621,12 +578,16 @@ export default function TrackingBahanKeJadiPage() {
     fetchData(startDate, endDate);
   };
 
-  // Filter data berdasarkan jenis dokumen pabean jika dipilih
+  // Filter data: hanya tampilkan bahan yang menghasilkan Barang Jadi & filter jenis dokumen jika dipilih
   const filteredData = useMemo(() => {
+    const barangJadiOnly = data.filter(
+      (item) =>
+        item.MenghasilkanBarangJadi && item.MenghasilkanBarangJadi.length > 0,
+    );
     if (!jenisDokumenFilter || jenisDokumenFilter === "all") {
-      return data;
+      return barangJadiOnly;
     }
-    return data.filter((item) =>
+    return barangJadiOnly.filter((item) =>
       item.JenisDokumen?.toLowerCase().includes(
         jenisDokumenFilter.toLowerCase(),
       ),
@@ -675,8 +636,6 @@ export default function TrackingBahanKeJadiPage() {
         "Masuk",
         "Stok Awal",
         "Total Tersedia",
-        "Terpakai",
-        "Persentase",
         "Rincian Produksi",
         "Rincian Barang Jadi",
       ];
@@ -742,10 +701,6 @@ export default function TrackingBahanKeJadiPage() {
 
         const jumlahMasuk =
           item.JumlahMasuk || item.JumlahMasuk_Kgs || 0;
-        const totalTerpakai =
-          item.TotalTerpakai !== undefined
-            ? item.TotalTerpakai
-            : item.TotalKgsTerpakai || 0;
 
         return [
           index + 1,
@@ -759,8 +714,6 @@ export default function TrackingBahanKeJadiPage() {
           jumlahMasuk,
           item.StokAwal || 0,
           item.TotalStokTersedia || 0,
-          totalTerpakai,
-          `${item.PersentaseTerpakai || 0}%`,
           produksiText,
           barangJadiText,
         ];
@@ -801,8 +754,6 @@ export default function TrackingBahanKeJadiPage() {
           totalMasuk,
           totalStokAwal,
           totalTersedia,
-          totalTerpakai,
-          "",
           "",
           "",
         ],
@@ -824,7 +775,7 @@ export default function TrackingBahanKeJadiPage() {
       const ws1 = XLSX.utils.aoa_to_sheet(ws1Data);
 
       if (!ws1["!merges"]) ws1["!merges"] = [];
-      const sheet1LastCol = 14;
+      const sheet1LastCol = 12;
 
       ws1["!merges"].push({ s: { r: 0, c: 0 }, e: { r: 0, c: sheet1LastCol } });
       ws1["!merges"].push({ s: { r: 1, c: 0 }, e: { r: 1, c: sheet1LastCol } });
@@ -853,8 +804,6 @@ export default function TrackingBahanKeJadiPage() {
         { wch: 15 }, // Masuk
         { wch: 15 }, // Stok Awal
         { wch: 16 }, // Total Tersedia
-        { wch: 15 }, // Terpakai
-        { wch: 14 }, // Persentase
         { wch: 50 }, // Rincian Produksi
         { wch: 55 }, // Rincian Barang Jadi
       ];
@@ -1192,7 +1141,7 @@ export default function TrackingBahanKeJadiPage() {
             </div>
           </CardHeader>
           <CardContent className="px-5 pb-5 pt-0">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
               <div className="flex items-start gap-2.5 p-3 rounded-lg bg-slate-50 border border-slate-200/60">
                 <Package className="h-4 w-4 text-blue-600 mt-0.5 shrink-0" />
                 <div>
@@ -1212,17 +1161,6 @@ export default function TrackingBahanKeJadiPage() {
                   </p>
                   <p className="text-[11px] text-slate-500">
                     Jumlah masuk, stok awal, dan total tersedia per satuan
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-start gap-2.5 p-3 rounded-lg bg-slate-50 border border-slate-200/60">
-                <MinusCircle className="h-4 w-4 text-purple-600 mt-0.5 shrink-0" />
-                <div>
-                  <p className="font-semibold text-xs text-slate-800">
-                    Pemakaian
-                  </p>
-                  <p className="text-[11px] text-slate-500">
-                    Total terpakai dan persentase pemakaian
                   </p>
                 </div>
               </div>
