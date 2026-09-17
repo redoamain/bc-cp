@@ -95,7 +95,7 @@ export async function GET(request: Request) {
         AND dt.[Kgs] > 0
     `;
 
-    // 3. Ambil data BARANG JADI (ItemType = 'H') - HANYA DARI DEPARTEMEN AS (ASSEMBLY) & PL (PLATING)
+    // 3. Ambil data BARANG JADI (ItemType = 'H') - HANYA DARI DEPARTEMEN AS (ASSEMBLY) & PL (PLATING) DENGAN KODEJENIS = 'K02' (BARANG JADI)
     const hasilQuery = `
       SELECT 
         hd.[ProdID] AS ProdID_Hasil,
@@ -113,6 +113,7 @@ export async function GET(request: Request) {
       LEFT JOIN [cp].[dbo].[taGoods] AS g
         ON dt.[ItemID] = g.[ItemID]
       WHERE dt.[ItemType] = 'H'
+        AND g.[KodeJenis] = 'K02'
         AND (hd.[ProdType] IN ('AS', 'PL') OR hd.[DeptID] IN ('AS', 'PL'))
     `;
 
