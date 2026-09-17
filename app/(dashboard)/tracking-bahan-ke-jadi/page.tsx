@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
 import * as XLSX from "xlsx";
@@ -95,14 +95,23 @@ interface SummaryData {
   total_bahan: number;
   total_jumlah_masuk: number;
   total_terpakai: number;
-  total_barang_jadi?: number;
   breakdown_masuk?: Record<string, number>;
-  breakdown_jadi?: Record<string, number>;
 }
 
 // ============================================
-// KOMPONEN CHILD
+// KOMPONEN CHILD & HELPER
 // ============================================
+
+const formatTgl = (val?: string | Date | null): string => {
+  if (!val || val === "-") return "-";
+  try {
+    const d = new Date(val);
+    if (isNaN(d.getTime())) return String(val);
+    return format(d, "dd/MM/yyyy");
+  } catch {
+    return String(val);
+  }
+};
 
 // Component untuk menampilkan rincian BPB jika bahan masuk beberapa kali
 const BPBList = ({
@@ -139,7 +148,7 @@ const BPBList = ({
                 {bpb.nomorBPB || "-"}
               </div>
               <div className="flex justify-between text-slate-500 mt-0.5">
-                <span>{bpb.tanggalBPB || "-"}</span>
+                <span>{formatTgl(bpb.tanggalBPB)}</span>
                 <span className="font-medium text-blue-600">
                   {(bpb.jumlah || 0).toLocaleString()}{" "}
                   {bpb.satuan || defaultSatuan || ""}
@@ -169,7 +178,7 @@ const ProduksiList = ({
   const [expanded, setExpanded] = useState(false);
 
   if (!produksiList || produksiList.length === 0) {
-    return <span className="text-gray-400 text-sm">-</span>;
+    return <span className="text-gray-400 text-xs italic">Belum terpakai</span>;
   }
 
   const total = produksiList.reduce(
@@ -181,29 +190,45 @@ const ProduksiList = ({
     <div>
       <button
         onClick={() => setExpanded(!expanded)}
-        className="text-xs text-blue-600 hover:underline"
+        className="text-xs text-blue-600 hover:text-blue-800 hover:underline flex items-center gap-1 font-medium"
       >
-        {expanded ? "▼" : "▶"} {produksiList.length} produksi (
+        {expanded ? "▼" : "▶"} {produksiList.length}x produksi (
         {total.toLocaleString()} {satuanBahan || ""})
       </button>
       {expanded && (
-        <div className="mt-2 space-y-2 max-h-60 overflow-auto">
-          {produksiList.map((prod, idx) => (
-            <div
-              key={idx}
-              className="text-xs border-l-2 border-blue-300 pl-2 py-1"
-            >
-              <div className="font-medium">
-                ProdID: {prod.ProdID_Bahan || "-"}
+        <div className="mt-2 space-y-2 max-h-60 overflow-auto bg-blue-50/40 p-2 rounded-md border border-blue-200 text-xs min-w-56 shadow-xs">
+          {produksiList.map((prod, idx) => {
+            const tgl = formatTgl(prod.Tanggal_Produksi);
+            return (
+              <div
+                key={idx}
+                className="border-b border-blue-100 pb-2 last:border-0 last:pb-0"
+              >
+                <div className="flex items-center justify-between gap-1">
+                  <span className="font-semibold text-blue-900 font-mono">
+                    {prod.SPK && prod.SPK !== "-" ? prod.SPK : prod.ProdID_Bahan || "-"}
+                  </span>
+                  <span className="text-[10px] text-slate-500 font-mono">
+                    {tgl}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-slate-600 mt-1">
+                  <span className="text-[10px] text-slate-500 font-mono">
+                    ID: {prod.ProdID_Bahan || "-"}
+                  </span>
+                  <span className="font-semibold text-blue-700">
+                    {(prod.Jumlah_Bahan || 0).toLocaleString()}{" "}
+                    {prod.Satuan_Bahan || satuanBahan || ""}
+                  </span>
+                </div>
+                {prod.PIC_Bahan && prod.PIC_Bahan !== "-" && (
+                  <div className="text-[10px] text-slate-400 mt-0.5">
+                    PIC: {prod.PIC_Bahan}
+                  </div>
+                )}
               </div>
-              <div className="text-gray-500">SPK: {prod.SPK || "-"}</div>
-              <div className="text-gray-700 font-medium">
-                Jumlah: {(prod.Jumlah_Bahan || 0).toLocaleString()}{" "}
-                {prod.Satuan_Bahan || satuanBahan || ""}
-              </div>
-              <div className="text-gray-400">PIC: {prod.PIC_Bahan || "-"}</div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
@@ -221,7 +246,7 @@ const BarangJadiList = ({
   const [expanded, setExpanded] = useState(false);
 
   if (!barangJadiList || barangJadiList.length === 0) {
-    return <span className="text-gray-400 text-sm">-</span>;
+    return <span className="text-gray-400 text-xs italic">Belum ada hasil</span>;
   }
 
   const totalJadi = barangJadiList.reduce(
@@ -233,34 +258,48 @@ const BarangJadiList = ({
     <div>
       <button
         onClick={() => setExpanded(!expanded)}
-        className="text-xs text-green-600 hover:underline font-medium"
+        className="text-xs text-emerald-600 hover:text-emerald-800 hover:underline flex items-center gap-1 font-medium"
       >
-        {expanded ? "▼" : "▶"} {barangJadiList.length} barang jadi (
+        {expanded ? "▼" : "▶"} {barangJadiList.length} item jadi (
         {totalJadi.toLocaleString()} {satuanJadi || ""})
       </button>
       {expanded && (
-        <div className="mt-2 space-y-2 max-h-60 overflow-auto">
-          {barangJadiList.map((bj, idx) => (
-            <div
-              key={idx}
-              className="text-xs border-l-2 border-green-300 pl-2 py-1"
-            >
-              <div className="font-medium text-green-700">
-                {bj.NamaBarang && bj.NamaBarang !== "-"
-                  ? bj.NamaBarang
-                  : bj.ItemID}
+        <div className="mt-2 space-y-2 max-h-60 overflow-auto bg-emerald-50/40 p-2 rounded-md border border-emerald-200 text-xs min-w-64 shadow-xs">
+          {barangJadiList.map((bj, idx) => {
+            const tgl = formatTgl(bj.Tanggal_Produksi);
+            return (
+              <div
+                key={idx}
+                className="border-b border-emerald-100 pb-2 last:border-0 last:pb-0"
+              >
+                <div className="font-semibold text-emerald-900 leading-tight">
+                  {bj.NamaBarang && bj.NamaBarang !== "-"
+                    ? bj.NamaBarang
+                    : bj.ItemID}
+                </div>
+                <div className="flex items-center justify-between text-slate-500 mt-1">
+                  <span className="text-[11px] font-mono">
+                    SPK: {bj.SPK || "-"}
+                  </span>
+                  <span className="text-[10px] font-mono">{tgl}</span>
+                </div>
+                <div className="flex items-center justify-between mt-1">
+                  <span className="text-[10px] text-slate-400 font-mono">
+                    ID: {bj.ProdID_Hasil || "-"}
+                  </span>
+                  <span className="font-semibold text-emerald-700">
+                    {(bj.Jumlah || bj.Jumlah_Kgs || 0).toLocaleString()}{" "}
+                    {bj.Satuan || satuanJadi || "PCS"}
+                  </span>
+                </div>
+                {bj.PIC_Hasil && bj.PIC_Hasil !== "-" && (
+                  <div className="text-[10px] text-slate-400 mt-0.5">
+                    PIC: {bj.PIC_Hasil}
+                  </div>
+                )}
               </div>
-              <div className="text-gray-500">SPK: {bj.SPK || "-"}</div>
-              <div className="text-gray-500">
-                ProdID: {bj.ProdID_Hasil || "-"}
-              </div>
-              <div className="text-gray-700 font-medium">
-                Jumlah: {(bj.Jumlah || bj.Jumlah_Kgs || 0).toLocaleString()}{" "}
-                {bj.Satuan || satuanJadi || "PCS"}
-              </div>
-              <div className="text-gray-400">PIC: {bj.PIC_Hasil || "-"}</div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
@@ -504,11 +543,11 @@ export default function TrackingBahanKeJadiPage() {
   const [error, setError] = useState<string | null>(null);
   const [tgl1, setTgl1] = useState(defaultTgl1);
   const [tgl2, setTgl2] = useState(defaultTgl2);
+  const [jenisDokumenFilter, setJenisDokumenFilter] = useState<string>("all");
   const [summary, setSummary] = useState<SummaryData>({
     total_bahan: 0,
     total_jumlah_masuk: 0,
     total_terpakai: 0,
-    total_barang_jadi: 0,
   });
 
   // User Context
@@ -543,7 +582,6 @@ export default function TrackingBahanKeJadiPage() {
             total_bahan: 0,
             total_jumlah_masuk: 0,
             total_terpakai: 0,
-            total_barang_jadi: 0,
           },
         );
       } else {
@@ -565,6 +603,18 @@ export default function TrackingBahanKeJadiPage() {
     fetchData(startDate, endDate);
   };
 
+  // Filter data berdasarkan jenis dokumen pabean jika dipilih
+  const filteredData = useMemo(() => {
+    if (!jenisDokumenFilter || jenisDokumenFilter === "all") {
+      return data;
+    }
+    return data.filter((item) =>
+      item.JenisDokumen?.toLowerCase().includes(
+        jenisDokumenFilter.toLowerCase(),
+      ),
+    );
+  }, [data, jenisDokumenFilter]);
+
   // Helper breakdown text
   const formatBreakdown = (breakdown?: Record<string, number>) => {
     if (!breakdown || Object.keys(breakdown).length === 0) return null;
@@ -576,25 +626,26 @@ export default function TrackingBahanKeJadiPage() {
   };
 
   // ============================================
-  // FUNGSI EXPORT EXCEL
+  // FUNGSI EXPORT EXCEL (MULTI-SHEET: RINGKASAN & DETAIL ALUR)
   // ============================================
   const exportToExcel = async () => {
     try {
-      if (data.length === 0) {
+      if (filteredData.length === 0) {
         alert("Tidak ada data untuk diexport");
         return;
       }
 
       const wb = XLSX.utils.book_new();
 
-      // Header Laporan
-      const reportTitle = "LAPORAN TRACKING BAHAN BAKU → BARANG JADI";
       const periode = `Periode: ${format(new Date(tgl1), "dd MMMM yyyy")} - ${format(new Date(tgl2), "dd MMMM yyyy")}`;
       const tanggalCetak = `Tanggal Cetak: ${format(new Date(), "dd MMMM yyyy HH:mm:ss")}`;
-      const totalData = `Total Data: ${data.length} item bahan baku`;
+      const totalData = `Total Data: ${filteredData.length} item bahan baku`;
 
-      // Header Kolom (Tanpa Total Jadi)
-      const columnHeaders = [
+      // --------------------------------------------
+      // SHEET 1: RINGKASAN TRACKING
+      // --------------------------------------------
+      const sheet1Title = "LAPORAN REKAPITULASI TRACKING BAHAN BAKU → BARANG JADI";
+      const sheet1Headers = [
         "No.",
         "Kode Bahan",
         "Nama Bahan",
@@ -608,49 +659,58 @@ export default function TrackingBahanKeJadiPage() {
         "Total Tersedia",
         "Terpakai",
         "Persentase",
-        "Detail Produksi",
-        "Barang Jadi",
+        "Rincian Produksi",
+        "Rincian Barang Jadi",
       ];
 
-      // Data Rows
-      const dataRows = data.map((item, index) => {
+      const dataRows = filteredData.map((item, index) => {
         const satuanBahan = item.Satuan || "";
         const satuanJadi = item.SatuanBarangJadi || "PCS";
 
-        // Format Barang Jadi dengan rapi
+        // Format Rincian Produksi yang bersih dan mudah dibaca
+        let produksiText = "-";
+        if (item.DigunakanDiProduksi && item.DigunakanDiProduksi.length > 0) {
+          produksiText = item.DigunakanDiProduksi.map((prod) => {
+            const spk =
+              prod.SPK && prod.SPK !== "-"
+                ? `SPK: ${prod.SPK}`
+                : `ID: ${prod.ProdID_Bahan || "-"}`;
+            const jumlah = (prod.Jumlah_Bahan || 0).toLocaleString("id-ID");
+            const unit = prod.Satuan_Bahan || satuanBahan;
+            const tgl = formatTgl(prod.Tanggal_Produksi);
+            const pic =
+              prod.PIC_Bahan && prod.PIC_Bahan !== "-"
+                ? ` (${prod.PIC_Bahan})`
+                : "";
+            return `• ${spk} | ${jumlah} ${unit} | Tgl: ${tgl}${pic}`;
+          }).join("\n");
+        }
+
+        // Format Rincian Barang Jadi yang bersih dan mudah dibaca
         let barangJadiText = "-";
         if (
           item.MenghasilkanBarangJadi &&
           item.MenghasilkanBarangJadi.length > 0
         ) {
-          barangJadiText = item.MenghasilkanBarangJadi.map((bj, idx) => {
+          barangJadiText = item.MenghasilkanBarangJadi.map((bj) => {
             const nama = bj.NamaBarang || bj.ItemID || "-";
-            const jumlah = (bj.Jumlah || bj.Jumlah_Kgs || 0).toLocaleString();
+            const jumlah = (bj.Jumlah || bj.Jumlah_Kgs || 0).toLocaleString(
+              "id-ID",
+            );
             const unit = bj.Satuan || satuanJadi;
-            const spk = bj.SPK || "-";
-            const pic = bj.PIC_Hasil || "-";
-            return `[${idx + 1}] ${nama}: ${jumlah} ${unit} | SPK: ${spk} | PIC: ${pic}`;
+            const spk =
+              bj.SPK && bj.SPK !== "-" ? ` | SPK: ${bj.SPK}` : "";
+            const tgl = formatTgl(bj.Tanggal_Produksi);
+            return `• ${nama}: ${jumlah} ${unit}${spk} | Tgl: ${tgl}`;
           }).join("\n");
         }
 
-        // Format Detail Produksi
-        let produksiText = "-";
-        if (item.DigunakanDiProduksi && item.DigunakanDiProduksi.length > 0) {
-          produksiText = item.DigunakanDiProduksi.map((prod, idx) => {
-            const jumlah = (prod.Jumlah_Bahan || 0).toLocaleString();
-            const unit = prod.Satuan_Bahan || satuanBahan;
-            const spk = prod.SPK || "-";
-            const pic = prod.PIC_Bahan || "-";
-            return `[${idx + 1}] SPK: ${spk} | ${jumlah} ${unit} | PIC: ${pic}`;
-          }).join("\n");
-        }
-
-        // Format No. BPB untuk Excel
+        // Format No. BPB
         let bpbText = item.NomorBPB || "-";
         if (item.DaftarPemasukan && item.DaftarPemasukan.length > 1) {
           bpbText = item.DaftarPemasukan.map(
-            (b, i) =>
-              `[${i + 1}] ${b.nomorBPB} (${(b.jumlah || 0).toLocaleString()} ${b.satuan || satuanBahan})`,
+            (b) =>
+              `• ${b.nomorBPB} (${(b.jumlah || 0).toLocaleString("id-ID")} ${b.satuan || satuanBahan})`,
           ).join("\n");
         }
 
@@ -668,7 +728,7 @@ export default function TrackingBahanKeJadiPage() {
           satuanBahan || "-",
           item.JenisDokumen || "-",
           bpbText,
-          item.TanggalBPB || "-",
+          formatTgl(item.TanggalBPB),
           item.Pemasok || "-",
           jumlahMasuk,
           item.StokAwal || 0,
@@ -680,20 +740,19 @@ export default function TrackingBahanKeJadiPage() {
         ];
       });
 
-      // Hitung Total
-      const totalMasuk = data.reduce(
+      const totalMasuk = filteredData.reduce(
         (sum, item) => sum + (item.JumlahMasuk || item.JumlahMasuk_Kgs || 0),
         0,
       );
-      const totalStokAwal = data.reduce(
+      const totalStokAwal = filteredData.reduce(
         (sum, item) => sum + (item.StokAwal || 0),
         0,
       );
-      const totalTersedia = data.reduce(
+      const totalTersedia = filteredData.reduce(
         (sum, item) => sum + (item.TotalStokTersedia || 0),
         0,
       );
-      const totalTerpakai = data.reduce(
+      const totalTerpakai = filteredData.reduce(
         (sum, item) =>
           sum +
           (item.TotalTerpakai !== undefined
@@ -702,9 +761,8 @@ export default function TrackingBahanKeJadiPage() {
         0,
       );
 
-      // Baris Total
-      const totalRows = [
-        [], // Baris kosong
+      const totalRowsSheet1 = [
+        [],
         [
           "TOTAL",
           "",
@@ -714,74 +772,298 @@ export default function TrackingBahanKeJadiPage() {
           "",
           "",
           "",
-          totalMasuk.toLocaleString("id-ID"),
-          totalStokAwal.toLocaleString("id-ID"),
-          totalTersedia.toLocaleString("id-ID"),
-          totalTerpakai.toLocaleString("id-ID"),
+          totalMasuk,
+          totalStokAwal,
+          totalTersedia,
+          totalTerpakai,
           "",
           "",
           "",
         ],
         [],
-        ["*** AKHIR LAPORAN ***"],
+        ["*** AKHIR RINGKASAN TRACKING ***"],
       ];
 
-      // Gabungkan semua data
-      const wsData = [
-        [reportTitle],
+      const ws1Data = [
+        [sheet1Title],
         [periode],
         [tanggalCetak],
         [totalData],
         [],
-        columnHeaders,
+        sheet1Headers,
         ...dataRows,
-        ...totalRows,
+        ...totalRowsSheet1,
       ];
 
-      const ws = XLSX.utils.aoa_to_sheet(wsData);
+      const ws1 = XLSX.utils.aoa_to_sheet(ws1Data);
 
-      // Merge Cells
-      if (!ws["!merges"]) ws["!merges"] = [];
-      const lastColIndex = 14;
+      if (!ws1["!merges"]) ws1["!merges"] = [];
+      const sheet1LastCol = 14;
 
-      // Merge header laporan
-      ws["!merges"].push({ s: { r: 0, c: 0 }, e: { r: 0, c: lastColIndex } });
-      ws["!merges"].push({ s: { r: 1, c: 0 }, e: { r: 1, c: lastColIndex } });
-      ws["!merges"].push({ s: { r: 2, c: 0 }, e: { r: 2, c: lastColIndex } });
-      ws["!merges"].push({ s: { r: 3, c: 0 }, e: { r: 3, c: lastColIndex } });
+      ws1["!merges"].push({ s: { r: 0, c: 0 }, e: { r: 0, c: sheet1LastCol } });
+      ws1["!merges"].push({ s: { r: 1, c: 0 }, e: { r: 1, c: sheet1LastCol } });
+      ws1["!merges"].push({ s: { r: 2, c: 0 }, e: { r: 2, c: sheet1LastCol } });
+      ws1["!merges"].push({ s: { r: 3, c: 0 }, e: { r: 3, c: sheet1LastCol } });
 
-      // Merge baris TOTAL
-      ws["!merges"].push({
-        s: { r: wsData.length - 3, c: 0 },
-        e: { r: wsData.length - 3, c: 7 },
+      ws1["!merges"].push({
+        s: { r: ws1Data.length - 3, c: 0 },
+        e: { r: ws1Data.length - 3, c: 7 },
       });
 
-      // Merge akhir laporan
-      ws["!merges"].push({
-        s: { r: wsData.length - 1, c: 0 },
-        e: { r: wsData.length - 1, c: lastColIndex },
+      ws1["!merges"].push({
+        s: { r: ws1Data.length - 1, c: 0 },
+        e: { r: ws1Data.length - 1, c: sheet1LastCol },
       });
 
-      // Lebar Kolom
-      ws["!cols"] = [
-        { wch: 6 }, // No.
-        { wch: 15 }, // Kode Bahan
+      ws1["!cols"] = [
+        { wch: 6 },  // No.
+        { wch: 16 }, // Kode Bahan
         { wch: 30 }, // Nama Bahan
         { wch: 10 }, // Satuan
         { wch: 15 }, // Jenis Dokumen
         { wch: 25 }, // No. BPB
-        { wch: 20 }, // Tgl Masuk
+        { wch: 14 }, // Tgl Masuk
         { wch: 25 }, // Pemasok
         { wch: 15 }, // Masuk
         { wch: 15 }, // Stok Awal
         { wch: 16 }, // Total Tersedia
         { wch: 15 }, // Terpakai
-        { wch: 15 }, // Persentase
-        { wch: 60 }, // Detail Produksi
-        { wch: 80 }, // Barang Jadi
+        { wch: 14 }, // Persentase
+        { wch: 50 }, // Rincian Produksi
+        { wch: 55 }, // Rincian Barang Jadi
       ];
 
-      XLSX.utils.book_append_sheet(wb, ws, "Tracking Bahan");
+      // --------------------------------------------
+      // SHEET 2: DETAIL ALUR PRODUKSI & HASIL
+      // --------------------------------------------
+      const sheet2Title =
+        "RINCIAN DETAIL PEMAKAIAN BAHAN DAN HASIL BARANG JADI";
+      const sheet2Subtitle =
+        "Tabel ini merinci setiap transaksi pemakaian bahan baku di produksi dan barang jadi yang dihasilkan per SPK / ID Produksi";
+      const sheet2Headers = [
+        "No.",
+        "Kode Bahan",
+        "Nama Bahan Baku",
+        "Satuan Bahan",
+        "No. BPB / Dokumen",
+        "Tgl Masuk Bahan",
+        "Pemasok",
+        "No. SPK",
+        "ID Produksi (ProdID)",
+        "Tgl Produksi",
+        "Pemakaian Bahan (Qty)",
+        "Satuan Pemakaian",
+        "PIC Pemakaian",
+        "Kode Barang Jadi",
+        "Nama Barang Jadi",
+        "Hasil Jadi (Qty)",
+        "Satuan Hasil",
+        "Tgl Selesai Jadi",
+        "PIC Barang Jadi",
+      ];
+
+      const detailRows: any[][] = [];
+      let detailIndex = 1;
+      let totalBahanTerpakaiDetail = 0;
+      let totalBarangJadiDetail = 0;
+
+      filteredData.forEach((item) => {
+        const satuanBahan = item.Satuan || "KG";
+        const bpb =
+          item.DaftarPemasukan && item.DaftarPemasukan.length > 1
+            ? item.DaftarPemasukan.map((d) => d.nomorBPB).join(", ")
+            : item.NomorBPB || "-";
+        const tglMasuk = formatTgl(item.TanggalBPB);
+        const pemasok = item.Pemasok || "-";
+
+        const pemakaianList = item.DigunakanDiProduksi || [];
+        const barangJadiList = item.MenghasilkanBarangJadi || [];
+
+        if (pemakaianList.length === 0) {
+          // Bahan baku belum terpakai di produksi
+          detailRows.push([
+            detailIndex++,
+            item.ItemID_Bahan || "-",
+            item.NamaBahan || "-",
+            satuanBahan,
+            bpb,
+            tglMasuk,
+            pemasok,
+            "-",
+            "-",
+            "-",
+            0,
+            satuanBahan,
+            "-",
+            "-",
+            "(Belum digunakan di produksi)",
+            0,
+            "-",
+            "-",
+            "-",
+          ]);
+        } else {
+          // Terdapat transaksi pemakaian bahan
+          pemakaianList.forEach((prod) => {
+            const spk = prod.SPK || "-";
+            const prodId = prod.ProdID_Bahan || "-";
+            const tglProd = formatTgl(prod.Tanggal_Produksi);
+            const qtyBahan = prod.Jumlah_Bahan || 0;
+            const satProd = prod.Satuan_Bahan || satuanBahan;
+            const picBahan = prod.PIC_Bahan || "-";
+
+            // Cari barang jadi yang berkorelasi dengan ProdID atau SPK
+            const matchingBJ = barangJadiList.filter(
+              (bj) =>
+                (prodId !== "-" && bj.ProdID_Hasil === prodId) ||
+                (spk !== "-" && bj.SPK === spk),
+            );
+
+            if (matchingBJ.length === 0) {
+              // Pemakaian ada tapi hasil belum tercatat (WIP)
+              totalBahanTerpakaiDetail += qtyBahan;
+              detailRows.push([
+                detailIndex++,
+                item.ItemID_Bahan || "-",
+                item.NamaBahan || "-",
+                satuanBahan,
+                bpb,
+                tglMasuk,
+                pemasok,
+                spk,
+                prodId,
+                tglProd,
+                qtyBahan,
+                satProd,
+                picBahan,
+                "-",
+                "(Dalam proses produksi / WIP)",
+                0,
+                "-",
+                "-",
+                "-",
+              ]);
+            } else {
+              // Menghasilkan satu atau beberapa jenis barang jadi
+              matchingBJ.forEach((bj, bjIdx) => {
+                const qtyBJ = bj.Jumlah || bj.Jumlah_Kgs || 0;
+                // Hanya hitung pemakaian bahan sekali jika 1 batch pemakaian menghasilkan lebih dari 1 barang jadi
+                const bahanQtyCol = bjIdx === 0 ? qtyBahan : 0;
+                if (bjIdx === 0) {
+                  totalBahanTerpakaiDetail += qtyBahan;
+                }
+                totalBarangJadiDetail += qtyBJ;
+
+                detailRows.push([
+                  detailIndex++,
+                  item.ItemID_Bahan || "-",
+                  item.NamaBahan || "-",
+                  satuanBahan,
+                  bpb,
+                  tglMasuk,
+                  pemasok,
+                  spk,
+                  prodId,
+                  tglProd,
+                  bahanQtyCol,
+                  satProd,
+                  picBahan,
+                  bj.ItemID || "-",
+                  bj.NamaBarang || bj.ItemID || "-",
+                  qtyBJ,
+                  bj.Satuan || "PCS",
+                  formatTgl(bj.Tanggal_Produksi),
+                  bj.PIC_Hasil || "-",
+                ]);
+              });
+            }
+          });
+        }
+      });
+
+      const totalRowsSheet2 = [
+        [],
+        [
+          "TOTAL",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          totalBahanTerpakaiDetail,
+          "",
+          "",
+          "",
+          "",
+          totalBarangJadiDetail,
+          "",
+          "",
+          "",
+        ],
+        [],
+        ["*** AKHIR RINCIAN ALUR PRODUKSI ***"],
+      ];
+
+      const ws2Data = [
+        [sheet2Title],
+        [periode],
+        [sheet2Subtitle],
+        [tanggalCetak],
+        [],
+        sheet2Headers,
+        ...detailRows,
+        ...totalRowsSheet2,
+      ];
+
+      const ws2 = XLSX.utils.aoa_to_sheet(ws2Data);
+
+      if (!ws2["!merges"]) ws2["!merges"] = [];
+      const sheet2LastCol = 18;
+
+      ws2["!merges"].push({ s: { r: 0, c: 0 }, e: { r: 0, c: sheet2LastCol } });
+      ws2["!merges"].push({ s: { r: 1, c: 0 }, e: { r: 1, c: sheet2LastCol } });
+      ws2["!merges"].push({ s: { r: 2, c: 0 }, e: { r: 2, c: sheet2LastCol } });
+      ws2["!merges"].push({ s: { r: 3, c: 0 }, e: { r: 3, c: sheet2LastCol } });
+
+      ws2["!merges"].push({
+        s: { r: ws2Data.length - 3, c: 0 },
+        e: { r: ws2Data.length - 3, c: 9 },
+      });
+
+      ws2["!merges"].push({
+        s: { r: ws2Data.length - 1, c: 0 },
+        e: { r: ws2Data.length - 1, c: sheet2LastCol },
+      });
+
+      ws2["!cols"] = [
+        { wch: 6 },  // No.
+        { wch: 16 }, // Kode Bahan
+        { wch: 32 }, // Nama Bahan Baku
+        { wch: 12 }, // Satuan Bahan
+        { wch: 22 }, // No. BPB / Dokumen
+        { wch: 14 }, // Tgl Masuk Bahan
+        { wch: 24 }, // Pemasok
+        { wch: 18 }, // No. SPK
+        { wch: 18 }, // ID Produksi (ProdID)
+        { wch: 14 }, // Tgl Produksi
+        { wch: 22 }, // Pemakaian Bahan (Qty)
+        { wch: 14 }, // Satuan Pemakaian
+        { wch: 16 }, // PIC Pemakaian
+        { wch: 18 }, // Kode Barang Jadi
+        { wch: 32 }, // Nama Barang Jadi
+        { wch: 20 }, // Hasil Jadi (Qty)
+        { wch: 14 }, // Satuan Hasil
+        { wch: 14 }, // Tgl Selesai Jadi
+        { wch: 16 }, // PIC Barang Jadi
+      ];
+
+      // Masukkan kedua sheet ke Workbook
+      XLSX.utils.book_append_sheet(wb, ws1, "Ringkasan Tracking");
+      XLSX.utils.book_append_sheet(wb, ws2, "Detail Alur Produksi");
 
       const fileName = `TRACKING_BAHAN_${tgl1}_${tgl2}.xlsx`;
       XLSX.writeFile(wb, fileName);
@@ -790,7 +1072,7 @@ export default function TrackingBahanKeJadiPage() {
       await sendTelegramNotification({
         fileName,
         periode: `${format(new Date(tgl1), "dd MMM yyyy")} - ${format(new Date(tgl2), "dd MMM yyyy")}`,
-        totalData: data.length,
+        totalData: filteredData.length,
         totalMasuk,
         totalTerpakai,
         userAgent: navigator.userAgent,
@@ -847,7 +1129,7 @@ export default function TrackingBahanKeJadiPage() {
             <Button
               variant="outline"
               onClick={exportToExcel}
-              disabled={data.length === 0 || loading}
+              disabled={filteredData.length === 0 || loading}
             >
               <Download className="h-4 w-4 mr-2" />
               Export Excel
@@ -1009,20 +1291,21 @@ export default function TrackingBahanKeJadiPage() {
               <div className="flex items-center justify-center h-64">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
               </div>
-            ) : data.length === 0 ? (
+            ) : filteredData.length === 0 ? (
               <div className="text-center py-8 text-gray-500">
                 <PackageX className="h-12 w-12 mx-auto mb-3 text-gray-300" />
-                <p>Tidak ada data untuk periode yang dipilih</p>
+                <p>Tidak ada data untuk filter yang dipilih</p>
                 <p className="text-xs mt-1">
-                  Coba pilih rentang tanggal yang berbeda
+                  Coba pilih rentang tanggal atau jenis dokumen yang berbeda
                 </p>
               </div>
             ) : (
               <DataTable
                 columns={columns}
-                data={data}
+                data={filteredData}
                 searchKey="NamaBahan"
                 searchPlaceholder="Cari nama bahan, kode item, atau jenis dokumen..."
+                onJenisDokumenFilter={setJenisDokumenFilter}
               />
             )}
           </CardContent>

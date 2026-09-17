@@ -22,7 +22,7 @@ export async function GET(request: Request) {
   try {
     const pool = await getPool();
 
-    // 1. Ambil data dari rpPemasukan
+    // 1. Ambil data dari rpPemasukan untuk periode yang dipilih
     const startDateObj = startDate ? new Date(startDate) : new Date();
     const endDateObj = endDate ? new Date(endDate) : new Date();
     // Pastikan batas waktu mencakup awal s/d akhir hari
@@ -78,22 +78,22 @@ export async function GET(request: Request) {
     let bahanData = [];
     let hasilData = [];
 
-    if (startDate && endDate) {
+    // PERBAIKAN TEMPORAL MISMATCH:
+    // Cari pemakaian produksi mulai dari tanggal bahan masuk (@StartDate) hingga saat ini,
+    // agar bahan yang masuk pada periode ini dan baru dipakai di tanggal berikutnya tetap terlacak.
+    if (startDate) {
       const req = pool.request();
       req.input("StartDate", sql.Date, new Date(startDate));
-      req.input("EndDate", sql.Date, new Date(endDate));
 
       const bahanResult = await req.query(`
         ${bahanQuery}
-        AND CONVERT(DATE, hd.[ProdDate]) >= @StartDate 
-        AND CONVERT(DATE, hd.[ProdDate]) <= @EndDate
+        AND CONVERT(DATE, hd.[ProdDate]) >= @StartDate
       `);
       bahanData = bahanResult.recordset;
 
       const hasilResult = await req.query(`
         ${hasilQuery}
-        AND CONVERT(DATE, hd.[ProdDate]) >= @StartDate 
-        AND CONVERT(DATE, hd.[ProdDate]) <= @EndDate
+        AND CONVERT(DATE, hd.[ProdDate]) >= @StartDate
       `);
       hasilData = hasilResult.recordset;
     } else {
@@ -104,7 +104,7 @@ export async function GET(request: Request) {
       hasilData = hasilResult.recordset;
     }
 
-    // Urutkan data
+    // Urutkan data berdasarkan tanggal produksi
     bahanData.sort(
       (a, b) =>
         new Date(b.Tanggal_Produksi).getTime() -
@@ -138,16 +138,14 @@ export async function GET(request: Request) {
       });
     }
 
-    // 5. Group hasil berdasarkan SPK
+    // 5. Group hasil berdasarkan SPK dan ProdID
     const hasilBySPK = new Map<string, any[]>();
+    const hasilByProdID = new Map<string, any[]>();
+
     for (const item of hasilData) {
       const spk = item.SPK;
-      if (!spk) continue;
-
-      if (!hasilBySPK.has(spk)) {
-        hasilBySPK.set(spk, []);
-      }
-      hasilBySPK.get(spk)!.push({
+      const prodId = item.ProdID_Hasil;
+      const hasilObj = {
         ProdID_Hasil: item.ProdID_Hasil || "-",
         ItemID_Hasil: item.ItemID_Hasil || "-",
         NamaBarang_Hasil: item.NamaBarang_Hasil || item.ItemID_Hasil || "-",
@@ -156,7 +154,21 @@ export async function GET(request: Request) {
         Tanggal_Hasil: item.Tanggal_Hasil || "-",
         SPK: item.SPK || "-",
         PIC_Hasil: item.PIC_Hasil || "-",
-      });
+      };
+
+      if (spk) {
+        if (!hasilBySPK.has(spk)) {
+          hasilBySPK.set(spk, []);
+        }
+        hasilBySPK.get(spk)!.push(hasilObj);
+      }
+
+      if (prodId && prodId !== "-") {
+        if (!hasilByProdID.has(prodId)) {
+          hasilByProdID.set(prodId, []);
+        }
+        hasilByProdID.get(prodId)!.push(hasilObj);
+      }
     }
 
     // 6. AGREGASI PEMASUKAN BERDASARKAN KODE BARANG DENGAN SATUAN DINAMIS (KG, PCS, DLL)
@@ -263,15 +275,16 @@ export async function GET(request: Request) {
       `📦 Agregasi bahan unik: ${pemasukanGrouped.size} dari ${pemasukanData.length} records BPB`,
     );
 
-    // 7. Fungsi get stock dengan timeout aman
+    // 7. Fungsi get stock dengan port awareness dan timeout aman
     async function getStockForItem(itemId: string): Promise<number> {
       try {
         if (!itemId) return 0;
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 4000);
 
+        const currentPort = process.env.PORT || 3000;
         const stockUrl = new URL(
-          `${process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"}/api/stock`,
+          `${process.env.NEXT_PUBLIC_BASE_URL || `http://localhost:${currentPort}`}/api/stock`,
         );
         stockUrl.searchParams.set("item", itemId);
         stockUrl.searchParams.set("tgl", new Date().toISOString());
@@ -306,7 +319,7 @@ export async function GET(request: Request) {
           0,
         );
 
-        // Cari barang jadi yang dihasilkan dari SPK yang SAMA dengan pemakaian
+        // Cari barang jadi yang dihasilkan dari SPK/ProdID yang SAMA dengan pemakaian
         const semuaBarangJadi: Array<{
           ProdID_Hasil: string;
           ItemID: string;
@@ -318,15 +331,44 @@ export async function GET(request: Request) {
           SPK: string;
           PIC_Hasil: string;
         }> = [];
-        const spkSudahDiproses = new Set<string>();
+        const barangJadiKeySet = new Set<string>();
 
         for (const pemakaian of pemakaianList) {
           const spk = pemakaian.SPK;
-          if (!spkSudahDiproses.has(spk)) {
-            spkSudahDiproses.add(spk);
-            const hasilList = hasilBySPK.get(spk) || [];
-            for (const hasil of hasilList) {
-              if (hasil.SPK === spk) {
+          const prodIdBahan = pemakaian.ProdID_Bahan;
+
+          // 1. Prioritaskan pencocokan ProdID yang sama persis (batch run yang sama)
+          const hasilListByProdID =
+            prodIdBahan && prodIdBahan !== "-"
+              ? hasilByProdID.get(prodIdBahan) || []
+              : [];
+
+          for (const hasil of hasilListByProdID) {
+            const key = `${hasil.ProdID_Hasil}_${hasil.ItemID_Hasil}_${hasil.SPK}`;
+            if (!barangJadiKeySet.has(key)) {
+              barangJadiKeySet.add(key);
+              semuaBarangJadi.push({
+                ProdID_Hasil: hasil.ProdID_Hasil,
+                ItemID: hasil.ItemID_Hasil,
+                NamaBarang:
+                  hasil.NamaBarang_Hasil || hasil.ItemID_Hasil || "-",
+                Satuan: hasil.Satuan_Hasil || "PCS",
+                Jumlah: hasil.Jumlah_Hasil || 0,
+                Jumlah_Kgs: hasil.Jumlah_Hasil || 0,
+                Tanggal_Produksi: hasil.Tanggal_Hasil,
+                SPK: spk,
+                PIC_Hasil: hasil.PIC_Hasil,
+              });
+            }
+          }
+
+          // 2. Jika tidak ada hasil pada ProdID tersebut, cocokkan berdasarkan nomor SPK
+          if (hasilListByProdID.length === 0 && spk && spk !== "-") {
+            const hasilListBySPK = hasilBySPK.get(spk) || [];
+            for (const hasil of hasilListBySPK) {
+              const key = `${hasil.ProdID_Hasil}_${hasil.ItemID_Hasil}_${hasil.SPK}`;
+              if (!barangJadiKeySet.has(key)) {
+                barangJadiKeySet.add(key);
                 semuaBarangJadi.push({
                   ProdID_Hasil: hasil.ProdID_Hasil,
                   ItemID: hasil.ItemID_Hasil,
@@ -395,7 +437,6 @@ export async function GET(request: Request) {
             ? group.jenisDokumenList.join(", ")
             : "-";
 
-        // Cari satuan barang jadi dominan/unik untuk item ini
         const satuanJadiSet = new Set(
           semuaBarangJadi.map((b) => b.Satuan).filter(Boolean),
         );
@@ -438,42 +479,18 @@ export async function GET(request: Request) {
       }),
     );
 
-    // 9. Hitung total barang jadi unik untuk menghindari duplikasi
-    const uniqueBarangJadiMap = new Map<string, number>();
-    for (const item of finalData) {
-      for (const bj of item.MenghasilkanBarangJadi) {
-        const key = `${bj.ProdID_Hasil || ""}_${bj.ItemID || ""}_${bj.SPK || ""}`;
-        if (!uniqueBarangJadiMap.has(key)) {
-          uniqueBarangJadiMap.set(key, bj.Jumlah || 0);
-        }
-      }
-    }
-    const totalBarangJadiUnique = Array.from(
-      uniqueBarangJadiMap.values(),
-    ).reduce((a, b) => a + b, 0);
-
-    // Hitung rincian per satuan (misal KG, PCS, LEMBAR)
+    // 9. Rincian per satuan masuk untuk summary card
     const breakdownMasuk: Record<string, number> = {};
     for (const item of finalData) {
       const s = item.Satuan || "LAINNYA";
       breakdownMasuk[s] = (breakdownMasuk[s] || 0) + item.JumlahMasuk;
     }
 
-    const breakdownJadi: Record<string, number> = {};
-    for (const item of finalData) {
-      for (const bj of item.MenghasilkanBarangJadi) {
-        const s = bj.Satuan || "PCS";
-        breakdownJadi[s] = (breakdownJadi[s] || 0) + (bj.Jumlah || 0);
-      }
-    }
-
     const summary = {
       total_bahan: finalData.length,
       total_jumlah_masuk: finalData.reduce((s, i) => s + i.JumlahMasuk, 0),
       total_terpakai: finalData.reduce((s, i) => s + i.TotalTerpakai, 0),
-      total_barang_jadi: totalBarangJadiUnique,
       breakdown_masuk: breakdownMasuk,
-      breakdown_jadi: breakdownJadi,
     };
 
     return NextResponse.json({
