@@ -11,12 +11,10 @@ import { DataTable } from "@/components/data-table";
 import {
   RefreshCw,
   Package,
-  AlertTriangle,
   Info,
   PackageX,
   Download,
   TrendingUp,
-  TrendingDown,
   PlusCircle,
   MinusCircle,
   AlertCircle,
@@ -39,6 +37,7 @@ interface ProduksiUsage {
   SPK: string;
   Tanggal_Produksi: string;
   Jumlah_Bahan: number;
+  Satuan_Bahan?: string;
   PIC_Bahan: string;
 }
 
@@ -46,78 +45,113 @@ interface BarangJadi {
   ProdID_Hasil: string;
   ItemID: string;
   NamaBarang: string;
-  Jumlah_Kgs: number;
+  Satuan?: string;
+  Jumlah?: number;
+  Jumlah_Kgs?: number;
   Tanggal_Produksi: string;
   SPK: string;
   PIC_Hasil: string;
 }
 
+interface PemasukanDetail {
+  nomorBPB: string;
+  tanggalBPB: string | null;
+  jumlah: number;
+  satuan?: string;
+  pemasok: string;
+  jenisDokumen: string;
+  nomorPO?: string;
+  nomorDokumen?: string;
+}
+
 interface TrackingItem {
   ItemID_Bahan: string;
   NamaBahan: string;
+  Satuan: string;
   JenisDokumen: string;
   NomorBPB: string;
   TanggalBPB: string | null;
   Pemasok: string;
-  JumlahMasuk_Kgs: number;
+  JumlahMasuk: number;
+  JumlahMasuk_Kgs?: number;
+  DaftarPemasukan?: PemasukanDetail[];
+  TotalBPBCount?: number;
   StokAwal: number;
   TotalStokTersedia: number;
   StockSekarang: number;
   DigunakanDiProduksi: ProduksiUsage[];
-  TotalKgsTerpakai: number;
+  TotalTerpakai: number;
+  TotalKgsTerpakai?: number;
   PersentaseTerpakai: number;
   MenghasilkanBarangJadi: BarangJadi[];
-  TotalBarangJadi: number;
+  TotalBarangJadi?: number;
+  SatuanBarangJadi?: string;
   StatusStock: string;
   StatusBg: string;
   IsOverUsed: boolean;
+}
+
+interface SummaryData {
+  total_bahan: number;
+  total_jumlah_masuk: number;
+  total_terpakai: number;
+  total_barang_jadi?: number;
+  breakdown_masuk?: Record<string, number>;
+  breakdown_jadi?: Record<string, number>;
 }
 
 // ============================================
 // KOMPONEN CHILD
 // ============================================
 
-// Component untuk menampilkan detail stock
-const StockDetail = ({ item }: { item: TrackingItem }) => {
+// Component untuk menampilkan rincian BPB jika bahan masuk beberapa kali
+const BPBList = ({
+  bpbList,
+  defaultNomorBPB,
+  defaultSatuan,
+}: {
+  bpbList?: PemasukanDetail[];
+  defaultNomorBPB: string;
+  defaultSatuan?: string;
+}) => {
   const [expanded, setExpanded] = useState(false);
+
+  if (!bpbList || bpbList.length <= 1) {
+    return <span className="font-mono text-xs">{defaultNomorBPB || "-"}</span>;
+  }
 
   return (
     <div>
       <button
         onClick={() => setExpanded(!expanded)}
-        className="text-xs text-blue-600 hover:underline flex items-center gap-1"
+        className="text-xs text-blue-600 hover:underline flex items-center gap-1 font-medium font-mono"
       >
-        <Info className="h-3 w-3" />
-        {expanded ? "▼" : "▶"} Detail
+        {expanded ? "▼" : "▶"} {bpbList.length} BPB
       </button>
       {expanded && (
-        <div className="mt-2 space-y-1 text-xs bg-gray-50 p-2 rounded-lg min-w-50">
-          <div className="grid grid-cols-2 gap-1">
-            <span className="text-gray-500">Stok Awal:</span>
-            <span className="font-medium">
-              {(item.StokAwal || 0).toLocaleString()} 
-            </span>
-            <span className="text-gray-500">+ Masuk:</span>
-            <span className="font-medium text-green-600">
-              + {(item.JumlahMasuk_Kgs || 0).toLocaleString()} 
-            </span>
-            <span className="text-gray-500">= Tersedia:</span>
-            <span className="font-medium">
-              {(item.TotalStokTersedia || 0).toLocaleString()} 
-            </span>
-            <span className="text-gray-500">- Terpakai:</span>
-            <span className="font-medium text-red-600">
-              - {(item.TotalKgsTerpakai || 0).toLocaleString()} 
-            </span>
-            <div className="border-t pt-1 mt-1 col-span-2">
-              <span className="font-bold">Stock Sekarang:</span>
-              <span
-                className={`font-bold ml-2 ${(item.StockSekarang || 0) < 0 ? "text-red-600" : "text-green-600"}`}
-              >
-                {(item.StockSekarang || 0).toLocaleString()} 
-              </span>
+        <div className="mt-2 space-y-1.5 max-h-48 overflow-auto bg-slate-50 p-2 rounded-md border border-slate-200 text-xs min-w-52 shadow-xs">
+          {bpbList.map((bpb, idx) => (
+            <div
+              key={idx}
+              className="border-b border-slate-200 pb-1.5 last:border-0 last:pb-0"
+            >
+              <div className="font-semibold text-slate-800 font-mono">
+                {bpb.nomorBPB || "-"}
+              </div>
+              <div className="flex justify-between text-slate-500 mt-0.5">
+                <span>{bpb.tanggalBPB || "-"}</span>
+                <span className="font-medium text-blue-600">
+                  {(bpb.jumlah || 0).toLocaleString()}{" "}
+                  {bpb.satuan || defaultSatuan || ""}
+                </span>
+              </div>
+              {bpb.pemasok && bpb.pemasok !== "-" && (
+                <div className="text-[10px] text-slate-400 truncate max-w-48">
+                  {bpb.pemasok}
+                </div>
+              )}
             </div>
-          </div>
+          ))}
         </div>
       )}
     </div>
@@ -125,14 +159,20 @@ const StockDetail = ({ item }: { item: TrackingItem }) => {
 };
 
 // Component untuk menampilkan pemakaian bahan di produksi
-const ProduksiList = ({ produksiList }: { produksiList: ProduksiUsage[] }) => {
+const ProduksiList = ({
+  produksiList,
+  satuanBahan,
+}: {
+  produksiList: ProduksiUsage[];
+  satuanBahan?: string;
+}) => {
   const [expanded, setExpanded] = useState(false);
 
   if (!produksiList || produksiList.length === 0) {
     return <span className="text-gray-400 text-sm">-</span>;
   }
 
-  const totalKgs = produksiList.reduce(
+  const total = produksiList.reduce(
     (sum, p) => sum + (p.Jumlah_Bahan || 0),
     0,
   );
@@ -144,7 +184,7 @@ const ProduksiList = ({ produksiList }: { produksiList: ProduksiUsage[] }) => {
         className="text-xs text-blue-600 hover:underline"
       >
         {expanded ? "▼" : "▶"} {produksiList.length} produksi (
-        {totalKgs.toLocaleString()} )
+        {total.toLocaleString()} {satuanBahan || ""})
       </button>
       {expanded && (
         <div className="mt-2 space-y-2 max-h-60 overflow-auto">
@@ -158,7 +198,8 @@ const ProduksiList = ({ produksiList }: { produksiList: ProduksiUsage[] }) => {
               </div>
               <div className="text-gray-500">SPK: {prod.SPK || "-"}</div>
               <div className="text-gray-700 font-medium">
-                Jumlah: {(prod.Jumlah_Bahan || 0).toLocaleString()} 
+                Jumlah: {(prod.Jumlah_Bahan || 0).toLocaleString()}{" "}
+                {prod.Satuan_Bahan || satuanBahan || ""}
               </div>
               <div className="text-gray-400">PIC: {prod.PIC_Bahan || "-"}</div>
             </div>
@@ -172,8 +213,10 @@ const ProduksiList = ({ produksiList }: { produksiList: ProduksiUsage[] }) => {
 // Component untuk menampilkan Barang Jadi
 const BarangJadiList = ({
   barangJadiList,
+  satuanJadi,
 }: {
   barangJadiList: BarangJadi[];
+  satuanJadi?: string;
 }) => {
   const [expanded, setExpanded] = useState(false);
 
@@ -182,7 +225,7 @@ const BarangJadiList = ({
   }
 
   const totalJadi = barangJadiList.reduce(
-    (sum, b) => sum + (b.Jumlah_Kgs || 0),
+    (sum, b) => sum + (b.Jumlah || b.Jumlah_Kgs || 0),
     0,
   );
 
@@ -193,7 +236,7 @@ const BarangJadiList = ({
         className="text-xs text-green-600 hover:underline font-medium"
       >
         {expanded ? "▼" : "▶"} {barangJadiList.length} barang jadi (
-        {totalJadi.toLocaleString()} )
+        {totalJadi.toLocaleString()} {satuanJadi || ""})
       </button>
       {expanded && (
         <div className="mt-2 space-y-2 max-h-60 overflow-auto">
@@ -203,14 +246,17 @@ const BarangJadiList = ({
               className="text-xs border-l-2 border-green-300 pl-2 py-1"
             >
               <div className="font-medium text-green-700">
-                {bj.NamaBarang || bj.ItemID}
+                {bj.NamaBarang && bj.NamaBarang !== "-"
+                  ? bj.NamaBarang
+                  : bj.ItemID}
               </div>
               <div className="text-gray-500">SPK: {bj.SPK || "-"}</div>
               <div className="text-gray-500">
                 ProdID: {bj.ProdID_Hasil || "-"}
               </div>
               <div className="text-gray-700 font-medium">
-                Jumlah: {(bj.Jumlah_Kgs || 0).toLocaleString()} 
+                Jumlah: {(bj.Jumlah || bj.Jumlah_Kgs || 0).toLocaleString()}{" "}
+                {bj.Satuan || satuanJadi || "PCS"}
               </div>
               <div className="text-gray-400">PIC: {bj.PIC_Hasil || "-"}</div>
             </div>
@@ -230,7 +276,6 @@ const sendTelegramNotification = async (exportData: {
   totalData: number;
   totalMasuk: number;
   totalTerpakai: number;
-  totalBarangJadi: number;
   userAgent?: string;
   userName?: string;
   userBagian?: string;
@@ -247,9 +292,8 @@ const sendTelegramNotification = async (exportData: {
           `📁 |File: ${exportData.fileName}\n` +
           `📅 |Periode: ${exportData.periode}\n` +
           `📊 |Total Item: ${exportData.totalData} bahan baku\n\n` +
-          `📥 |Total Masuk: ${exportData.totalMasuk.toLocaleString("id-ID")} \n` +
-          `⚙️ |Total Terpakai: ${exportData.totalTerpakai.toLocaleString("id-ID")} \n` +
-          `📦 |Total Barang Jadi: ${exportData.totalBarangJadi.toLocaleString("id-ID")} \n\n` +
+          `📥 |Total Masuk: ${exportData.totalMasuk.toLocaleString("id-ID")}\n` +
+          `⚙️ |Total Terpakai: ${exportData.totalTerpakai.toLocaleString("id-ID")}\n\n` +
           `🕐 |Waktu Export: ${format(new Date(), "dd MMM yyyy HH:mm:ss", { locale: id })}\n` +
           `👤 |Diekspor oleh: ${exportData.userName || "Unknown"} ${exportData.userBagian ? `(${exportData.userBagian})` : ""}\n` +
           `💻 |User Agent: ${exportData.userAgent || "Unknown"}`,
@@ -266,13 +310,13 @@ const sendTelegramNotification = async (exportData: {
 };
 
 // ============================================
-// KOLOM TABEL (SESUAI FRONTEND)
+// KOLOM TABEL
 // ============================================
 const columns: ColumnDef<TrackingItem>[] = [
   {
     accessorKey: "ItemID_Bahan",
     header: "Kode Bahan",
-    size: 100,
+    size: 110,
     cell: ({ row }) => (
       <span className="font-mono text-xs">
         {row.original.ItemID_Bahan || "-"}
@@ -286,6 +330,16 @@ const columns: ColumnDef<TrackingItem>[] = [
     cell: ({ row }) => row.original.NamaBahan || "-",
   },
   {
+    accessorKey: "Satuan",
+    header: "Satuan",
+    size: 80,
+    cell: ({ row }) => (
+      <span className="inline-block px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 text-xs font-mono font-medium">
+        {row.original.Satuan || "-"}
+      </span>
+    ),
+  },
+  {
     accessorKey: "JenisDokumen",
     header: "Jenis Dokumen",
     size: 120,
@@ -294,35 +348,58 @@ const columns: ColumnDef<TrackingItem>[] = [
   {
     accessorKey: "NomorBPB",
     header: "No. BPB",
-    size: 120,
-    cell: ({ row }) => row.original.NomorBPB || "-",
+    size: 130,
+    cell: ({ row }) => (
+      <BPBList
+        bpbList={row.original.DaftarPemasukan}
+        defaultNomorBPB={row.original.NomorBPB}
+        defaultSatuan={row.original.Satuan}
+      />
+    ),
   },
   {
     accessorKey: "TanggalBPB",
     header: "Tgl Masuk",
-    size: 100,
+    size: 120,
     cell: ({ row }) => row.original.TanggalBPB || "-",
   },
   {
     accessorKey: "Pemasok",
     header: "Pemasok",
-    size: 150,
+    size: 160,
     cell: ({ row }) => row.original.Pemasok || "-",
   },
   {
-    accessorKey: "JumlahMasuk_Kgs",
-    header: "Masuk ()",
-    size: 100,
-    cell: ({ row }) => (
-      <span className="font-medium text-blue-600">
-        {(row.original.JumlahMasuk_Kgs || 0).toLocaleString()}
-      </span>
-    ),
+    accessorKey: "JumlahMasuk",
+    header: "Masuk",
+    size: 120,
+    cell: ({ row }) => {
+      const bpbCount =
+        row.original.TotalBPBCount ||
+        row.original.DaftarPemasukan?.length ||
+        1;
+      const jumlah =
+        row.original.JumlahMasuk ||
+        row.original.JumlahMasuk_Kgs ||
+        0;
+      return (
+        <div>
+          <span className="font-medium text-blue-600">
+            {jumlah.toLocaleString()} {row.original.Satuan || ""}
+          </span>
+          {bpbCount > 1 && (
+            <span className="block text-[10px] text-slate-400 font-normal">
+              ({bpbCount} BPB)
+            </span>
+          )}
+        </div>
+      );
+    },
   },
   {
     id: "stok_awal",
     header: "Stok Awal",
-    size: 80,
+    size: 100,
     cell: ({ row }) => {
       const stokAwal = row.original.StokAwal || 0;
       return (
@@ -330,13 +407,13 @@ const columns: ColumnDef<TrackingItem>[] = [
           <Tooltip>
             <TooltipTrigger>
               <span
-                className={stokAwal > 0 ? "text-blue-600" : "text-gray-400"}
+                className={stokAwal > 0 ? "text-blue-600 font-medium" : "text-gray-400"}
               >
-                {stokAwal.toLocaleString()}
+                {stokAwal.toLocaleString()} {row.original.Satuan || ""}
               </span>
             </TooltipTrigger>
             <TooltipContent>
-              <p>Stock sebelum pemasukan periode ini</p>
+              <p>Stok sebelum pemasukan periode ini</p>
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>
@@ -350,7 +427,10 @@ const columns: ColumnDef<TrackingItem>[] = [
     cell: ({ row }) => {
       const item = row.original;
       const isOver = item.IsOverUsed || false;
-      const totalTerpakai = item.TotalKgsTerpakai || 0;
+      const totalTerpakai =
+        item.TotalTerpakai !== undefined
+          ? item.TotalTerpakai
+          : item.TotalKgsTerpakai || 0;
       const totalTersedia = item.TotalStokTersedia || 0;
       const persentase = item.PersentaseTerpakai || 0;
       const safePersentase = Math.min(persentase, 100);
@@ -366,7 +446,7 @@ const columns: ColumnDef<TrackingItem>[] = [
           <div className="flex justify-between text-xs">
             <span className={isOver ? "text-red-600 font-bold" : ""}>
               {totalTerpakai.toLocaleString()} /{" "}
-              {totalTersedia.toLocaleString()}
+              {totalTersedia.toLocaleString()} {item.Satuan || ""}
             </span>
             <span className={isOver ? "text-red-600 font-bold" : ""}>
               {persentase}%
@@ -387,29 +467,23 @@ const columns: ColumnDef<TrackingItem>[] = [
   {
     id: "produksi_detail",
     header: "Detail Produksi",
-    size: 150,
+    size: 170,
     cell: ({ row }) => (
-      <ProduksiList produksiList={row.original.DigunakanDiProduksi || []} />
+      <ProduksiList
+        produksiList={row.original.DigunakanDiProduksi || []}
+        satuanBahan={row.original.Satuan}
+      />
     ),
   },
   {
     id: "menghasilkan",
     header: "Barang Jadi",
-    size: 220,
+    size: 250,
     cell: ({ row }) => (
       <BarangJadiList
         barangJadiList={row.original.MenghasilkanBarangJadi || []}
+        satuanJadi={row.original.SatuanBarangJadi}
       />
-    ),
-  },
-  {
-    id: "total_jadi",
-    header: "Total Jadi",
-    size: 80,
-    cell: ({ row }) => (
-      <span className="font-medium text-green-600">
-        {(row.original.TotalBarangJadi || 0).toLocaleString()}
-      </span>
     ),
   },
 ];
@@ -430,7 +504,7 @@ export default function TrackingBahanKeJadiPage() {
   const [error, setError] = useState<string | null>(null);
   const [tgl1, setTgl1] = useState(defaultTgl1);
   const [tgl2, setTgl2] = useState(defaultTgl2);
-  const [summary, setSummary] = useState({
+  const [summary, setSummary] = useState<SummaryData>({
     total_bahan: 0,
     total_jumlah_masuk: 0,
     total_terpakai: 0,
@@ -491,8 +565,18 @@ export default function TrackingBahanKeJadiPage() {
     fetchData(startDate, endDate);
   };
 
+  // Helper breakdown text
+  const formatBreakdown = (breakdown?: Record<string, number>) => {
+    if (!breakdown || Object.keys(breakdown).length === 0) return null;
+    const entries = Object.entries(breakdown);
+    if (entries.length === 1) return null;
+    return entries
+      .map(([unit, qty]) => `${qty.toLocaleString()} ${unit}`)
+      .join(" • ");
+  };
+
   // ============================================
-  // FUNGSI EXPORT EXCEL (SIMPEL)
+  // FUNGSI EXPORT EXCEL
   // ============================================
   const exportToExcel = async () => {
     try {
@@ -509,28 +593,31 @@ export default function TrackingBahanKeJadiPage() {
       const tanggalCetak = `Tanggal Cetak: ${format(new Date(), "dd MMMM yyyy HH:mm:ss")}`;
       const totalData = `Total Data: ${data.length} item bahan baku`;
 
-      // Header Kolom (SESUAI FRONTEND - Tanpa Status Stok & Over Used)
+      // Header Kolom (Tanpa Total Jadi)
       const columnHeaders = [
         "No.",
         "Kode Bahan",
         "Nama Bahan",
+        "Satuan",
         "Jenis Dokumen",
         "No. BPB",
         "Tgl Masuk",
         "Pemasok",
-        "Pembelian",
+        "Masuk",
         "Stok Awal",
         "Total Tersedia",
         "Terpakai",
         "Persentase",
         "Detail Produksi",
         "Barang Jadi",
-        "Total Jadi",
       ];
 
       // Data Rows
       const dataRows = data.map((item, index) => {
-        // Format Barang Jadi dengan rapi - per item di baris baru
+        const satuanBahan = item.Satuan || "";
+        const satuanJadi = item.SatuanBarangJadi || "PCS";
+
+        // Format Barang Jadi dengan rapi
         let barangJadiText = "-";
         if (
           item.MenghasilkanBarangJadi &&
@@ -538,12 +625,12 @@ export default function TrackingBahanKeJadiPage() {
         ) {
           barangJadiText = item.MenghasilkanBarangJadi.map((bj, idx) => {
             const nama = bj.NamaBarang || bj.ItemID || "-";
-            const jumlah = (bj.Jumlah_Kgs || 0).toLocaleString();
+            const jumlah = (bj.Jumlah || bj.Jumlah_Kgs || 0).toLocaleString();
+            const unit = bj.Satuan || satuanJadi;
             const spk = bj.SPK || "-";
             const pic = bj.PIC_Hasil || "-";
-            // Format: [1] Nama Barang: 100  | SPK: SPK-001 | PIC: John
-            return `[${idx + 1}] ${nama}: ${jumlah}  | SPK: ${spk} | PIC: ${pic}`;
-          }).join("\n"); // Baris baru untuk setiap item
+            return `[${idx + 1}] ${nama}: ${jumlah} ${unit} | SPK: ${spk} | PIC: ${pic}`;
+          }).join("\n");
         }
 
         // Format Detail Produksi
@@ -551,34 +638,51 @@ export default function TrackingBahanKeJadiPage() {
         if (item.DigunakanDiProduksi && item.DigunakanDiProduksi.length > 0) {
           produksiText = item.DigunakanDiProduksi.map((prod, idx) => {
             const jumlah = (prod.Jumlah_Bahan || 0).toLocaleString();
+            const unit = prod.Satuan_Bahan || satuanBahan;
             const spk = prod.SPK || "-";
             const pic = prod.PIC_Bahan || "-";
-            return `[${idx + 1}] SPK: ${spk} | ${jumlah}  | PIC: ${pic}`;
+            return `[${idx + 1}] SPK: ${spk} | ${jumlah} ${unit} | PIC: ${pic}`;
           }).join("\n");
         }
+
+        // Format No. BPB untuk Excel
+        let bpbText = item.NomorBPB || "-";
+        if (item.DaftarPemasukan && item.DaftarPemasukan.length > 1) {
+          bpbText = item.DaftarPemasukan.map(
+            (b, i) =>
+              `[${i + 1}] ${b.nomorBPB} (${(b.jumlah || 0).toLocaleString()} ${b.satuan || satuanBahan})`,
+          ).join("\n");
+        }
+
+        const jumlahMasuk =
+          item.JumlahMasuk || item.JumlahMasuk_Kgs || 0;
+        const totalTerpakai =
+          item.TotalTerpakai !== undefined
+            ? item.TotalTerpakai
+            : item.TotalKgsTerpakai || 0;
 
         return [
           index + 1,
           item.ItemID_Bahan || "-",
           item.NamaBahan || "-",
+          satuanBahan || "-",
           item.JenisDokumen || "-",
-          item.NomorBPB || "-",
+          bpbText,
           item.TanggalBPB || "-",
           item.Pemasok || "-",
-          item.JumlahMasuk_Kgs || 0,
+          jumlahMasuk,
           item.StokAwal || 0,
           item.TotalStokTersedia || 0,
-          item.TotalKgsTerpakai || 0,
+          totalTerpakai,
           `${item.PersentaseTerpakai || 0}%`,
           produksiText,
           barangJadiText,
-          item.TotalBarangJadi || 0,
         ];
       });
 
       // Hitung Total
       const totalMasuk = data.reduce(
-        (sum, item) => sum + (item.JumlahMasuk_Kgs || 0),
+        (sum, item) => sum + (item.JumlahMasuk || item.JumlahMasuk_Kgs || 0),
         0,
       );
       const totalStokAwal = data.reduce(
@@ -590,11 +694,11 @@ export default function TrackingBahanKeJadiPage() {
         0,
       );
       const totalTerpakai = data.reduce(
-        (sum, item) => sum + (item.TotalKgsTerpakai || 0),
-        0,
-      );
-      const totalBarangJadi = data.reduce(
-        (sum, item) => sum + (item.TotalBarangJadi || 0),
+        (sum, item) =>
+          sum +
+          (item.TotalTerpakai !== undefined
+            ? item.TotalTerpakai
+            : item.TotalKgsTerpakai || 0),
         0,
       );
 
@@ -609,6 +713,7 @@ export default function TrackingBahanKeJadiPage() {
           "",
           "",
           "",
+          "",
           totalMasuk.toLocaleString("id-ID"),
           totalStokAwal.toLocaleString("id-ID"),
           totalTersedia.toLocaleString("id-ID"),
@@ -616,7 +721,6 @@ export default function TrackingBahanKeJadiPage() {
           "",
           "",
           "",
-          totalBarangJadi.toLocaleString("id-ID"),
         ],
         [],
         ["*** AKHIR LAPORAN ***"],
@@ -628,7 +732,7 @@ export default function TrackingBahanKeJadiPage() {
         [periode],
         [tanggalCetak],
         [totalData],
-        [], // Baris kosong
+        [],
         columnHeaders,
         ...dataRows,
         ...totalRows,
@@ -638,7 +742,7 @@ export default function TrackingBahanKeJadiPage() {
 
       // Merge Cells
       if (!ws["!merges"]) ws["!merges"] = [];
-      const lastColIndex = 14; // 15 kolom (0-14)
+      const lastColIndex = 14;
 
       // Merge header laporan
       ws["!merges"].push({ s: { r: 0, c: 0 }, e: { r: 0, c: lastColIndex } });
@@ -649,7 +753,7 @@ export default function TrackingBahanKeJadiPage() {
       // Merge baris TOTAL
       ws["!merges"].push({
         s: { r: wsData.length - 3, c: 0 },
-        e: { r: wsData.length - 3, c: 6 },
+        e: { r: wsData.length - 3, c: 7 },
       });
 
       // Merge akhir laporan
@@ -663,46 +767,19 @@ export default function TrackingBahanKeJadiPage() {
         { wch: 6 }, // No.
         { wch: 15 }, // Kode Bahan
         { wch: 30 }, // Nama Bahan
+        { wch: 10 }, // Satuan
         { wch: 15 }, // Jenis Dokumen
-        { wch: 15 }, // No. BPB
-        { wch: 15 }, // Tgl Masuk
+        { wch: 25 }, // No. BPB
+        { wch: 20 }, // Tgl Masuk
         { wch: 25 }, // Pemasok
-        { wch: 15 }, // Masuk ()
-        { wch: 18 }, // Stok Awal ()
-        { wch: 18 }, // Total Tersedia ()
-        { wch: 18 }, // Terpakai ()
+        { wch: 15 }, // Masuk
+        { wch: 15 }, // Stok Awal
+        { wch: 16 }, // Total Tersedia
+        { wch: 15 }, // Terpakai
         { wch: 15 }, // Persentase
         { wch: 60 }, // Detail Produksi
-        { wch: 80 }, // Barang Jadi (diperbesar untuk multi-line)
-        { wch: 18 }, // Total Jadi ()
+        { wch: 80 }, // Barang Jadi
       ];
-
-      // Set row heights - penting untuk wrap text
-      ws["!rows"] = [
-        { hpt: 30 }, // Baris 1 (judul)
-        { hpt: 20 }, // Baris 2 (periode)
-        { hpt: 20 }, // Baris 3 (tanggal cetak)
-        { hpt: 20 }, // Baris 4 (total data)
-        { hpt: 5 }, // Baris 5 (kosong)
-        { hpt: 25 }, // Baris 6 (header)
-      ];
-
-      // Enable wrap text untuk kolom Barang Jadi dan Detail Produksi
-      // (Ini akan membuat teks dengan \n terbaca sebagai new line)
-      const range = XLSX.utils.decode_range(ws["!ref"] || "A1");
-      for (let R = range.s.r; R <= range.e.r; R++) {
-        for (let C = range.s.c; C <= range.e.c; C++) {
-          const addr = XLSX.utils.encode_cell({ r: R, c: C });
-          if (!ws[addr]) continue;
-          if (!ws[addr].s) ws[addr].s = {};
-          // Apply wrap text for columns: Detail Produksi (col 12) dan Barang Jadi (col 13)
-          if (C === 12 || C === 13) {
-            ws[addr].s.alignment = { wrapText: true, vertical: "top" };
-          } else {
-            ws[addr].s.alignment = { wrapText: false, vertical: "center" };
-          }
-        }
-      }
 
       XLSX.utils.book_append_sheet(wb, ws, "Tracking Bahan");
 
@@ -716,7 +793,6 @@ export default function TrackingBahanKeJadiPage() {
         totalData: data.length,
         totalMasuk,
         totalTerpakai,
-        totalBarangJadi,
         userAgent: navigator.userAgent,
         userName: userInfo.name,
         userBagian: userInfo.bagian,
@@ -731,7 +807,6 @@ export default function TrackingBahanKeJadiPage() {
   // RENDER
   // ============================================
 
-  // Loading state
   if (userLoading) {
     return (
       <div className="container mx-auto px-4 py-8">
@@ -741,6 +816,8 @@ export default function TrackingBahanKeJadiPage() {
       </div>
     );
   }
+
+  const breakdownMasukText = formatBreakdown(summary.breakdown_masuk);
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -803,25 +880,31 @@ export default function TrackingBahanKeJadiPage() {
               <div className="flex items-start gap-2.5 p-3 rounded-lg bg-slate-50 border border-slate-200/60">
                 <Package className="h-4 w-4 text-blue-600 mt-0.5 shrink-0" />
                 <div>
-                  <p className="font-semibold text-xs text-slate-800">Kode & Nama Bahan</p>
+                  <p className="font-semibold text-xs text-slate-800">
+                    Kode & Nama Bahan
+                  </p>
                   <p className="text-[11px] text-slate-500">
-                    Identitas bahan baku yang dilacak
+                    Identitas bahan baku dan satuannya (Kg, Pcs, dll)
                   </p>
                 </div>
               </div>
               <div className="flex items-start gap-2.5 p-3 rounded-lg bg-slate-50 border border-slate-200/60">
                 <PlusCircle className="h-4 w-4 text-emerald-600 mt-0.5 shrink-0" />
                 <div>
-                  <p className="font-semibold text-xs text-slate-800">Masuk & Stok</p>
+                  <p className="font-semibold text-xs text-slate-800">
+                    Masuk & Stok
+                  </p>
                   <p className="text-[11px] text-slate-500">
-                    Jumlah masuk, stok awal, dan total tersedia
+                    Jumlah masuk, stok awal, dan total tersedia per satuan
                   </p>
                 </div>
               </div>
               <div className="flex items-start gap-2.5 p-3 rounded-lg bg-slate-50 border border-slate-200/60">
                 <MinusCircle className="h-4 w-4 text-purple-600 mt-0.5 shrink-0" />
                 <div>
-                  <p className="font-semibold text-xs text-slate-800">Pemakaian</p>
+                  <p className="font-semibold text-xs text-slate-800">
+                    Pemakaian
+                  </p>
                   <p className="text-[11px] text-slate-500">
                     Total terpakai dan persentase pemakaian
                   </p>
@@ -830,18 +913,22 @@ export default function TrackingBahanKeJadiPage() {
               <div className="flex items-start gap-2.5 p-3 rounded-lg bg-slate-50 border border-slate-200/60">
                 <TrendingUp className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
                 <div>
-                  <p className="font-semibold text-xs text-slate-800">Detail Produksi</p>
+                  <p className="font-semibold text-xs text-slate-800">
+                    Detail Produksi
+                  </p>
                   <p className="text-[11px] text-slate-500">
-                    Rincian pemakaian di setiap produksi
+                    Rincian pemakaian di setiap nomor SPK produksi
                   </p>
                 </div>
               </div>
               <div className="flex items-start gap-2.5 p-3 rounded-lg bg-slate-50 border border-slate-200/60">
                 <Package className="h-4 w-4 text-emerald-600 mt-0.5 shrink-0" />
                 <div>
-                  <p className="font-semibold text-xs text-slate-800">Barang Jadi</p>
+                  <p className="font-semibold text-xs text-slate-800">
+                    Barang Jadi
+                  </p>
                   <p className="text-[11px] text-slate-500">
-                    Hasil produksi dari bahan baku
+                    Hasil produksi dari bahan baku beserta satuannya
                   </p>
                 </div>
               </div>
@@ -849,24 +936,30 @@ export default function TrackingBahanKeJadiPage() {
           </CardContent>
         </Card>
 
-        {/* Summary Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Summary Cards (3 Kartu Alur Bahan Baku) */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <Card className="border border-slate-200/80 shadow-xs bg-white">
             <CardHeader className="flex flex-row items-center justify-between pb-2 pt-4 px-4.5">
-              <CardTitle className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total Bahan</CardTitle>
+              <CardTitle className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                Total Bahan
+              </CardTitle>
               <div className="w-7 h-7 rounded-lg bg-slate-100 flex items-center justify-center text-slate-600 border border-slate-200/60">
                 <Package className="h-3.5 w-3.5" />
               </div>
             </CardHeader>
             <CardContent className="px-4.5 pb-4 pt-0">
-              <p className="text-2xl font-bold tracking-tight text-slate-900">{summary.total_bahan || 0}</p>
+              <p className="text-2xl font-bold tracking-tight text-slate-900">
+                {summary.total_bahan || 0}
+              </p>
               <p className="text-xs text-slate-500 mt-1">Item bahan baku</p>
             </CardContent>
           </Card>
 
           <Card className="border border-slate-200/80 shadow-xs bg-white">
             <CardHeader className="flex flex-row items-center justify-between pb-2 pt-4 px-4.5">
-              <CardTitle className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total Masuk</CardTitle>
+              <CardTitle className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                Total Masuk
+              </CardTitle>
               <div className="w-7 h-7 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600 border border-blue-100">
                 <PlusCircle className="h-3.5 w-3.5" />
               </div>
@@ -875,7 +968,9 @@ export default function TrackingBahanKeJadiPage() {
               <p className="text-2xl font-bold tracking-tight text-blue-600">
                 {(summary.total_jumlah_masuk || 0).toLocaleString()}
               </p>
-              <p className="text-xs text-slate-500 mt-1">Jumlah kuantitas masuk</p>
+              <p className="text-xs text-slate-500 mt-1 truncate" title={breakdownMasukText || "Total kuantitas masuk"}>
+                {breakdownMasukText || "Total kuantitas masuk"}
+              </p>
             </CardContent>
           </Card>
 
@@ -892,22 +987,9 @@ export default function TrackingBahanKeJadiPage() {
               <p className="text-2xl font-bold tracking-tight text-purple-600">
                 {(summary.total_terpakai || 0).toLocaleString()}
               </p>
-              <p className="text-xs text-slate-500 mt-1">Bahan digunakan produksi</p>
-            </CardContent>
-          </Card>
-
-          <Card className="border border-slate-200/80 shadow-xs bg-white">
-            <CardHeader className="flex flex-row items-center justify-between pb-2 pt-4 px-4.5">
-              <CardTitle className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Barang Jadi</CardTitle>
-              <div className="w-7 h-7 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-600 border border-emerald-100">
-                <TrendingUp className="h-3.5 w-3.5" />
-              </div>
-            </CardHeader>
-            <CardContent className="px-4.5 pb-4 pt-0">
-              <p className="text-2xl font-bold tracking-tight text-emerald-600">
-                {(summary.total_barang_jadi || 0).toLocaleString()}
+              <p className="text-xs text-slate-500 mt-1">
+                Bahan digunakan produksi
               </p>
-              <p className="text-xs text-slate-500 mt-1">Total hasil barang jadi</p>
             </CardContent>
           </Card>
         </div>
