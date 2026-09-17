@@ -948,7 +948,9 @@ export default function TrackingBahanKeJadiPage() {
             );
 
             if (matchingBJ.length === 0) {
-              // Pemakaian ada tapi hasil belum tercatat (WIP)
+              const isNonSPK =
+                prod.Sumber === "NON_SPK" ||
+                prod.SPK?.startsWith("LBK:");
               totalBahanTerpakaiDetail += qtyBahan;
               detailRows.push([
                 detailIndex++,
@@ -966,7 +968,7 @@ export default function TrackingBahanKeJadiPage() {
                 picBahan,
                 "-",
                 "-",
-                "(Dalam proses produksi / WIP)",
+                isNonSPK ? "-" : "(Dalam proses produksi / WIP)",
                 0,
                 "-",
                 "-",

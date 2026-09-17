@@ -436,43 +436,41 @@ export async function GET(request: Request) {
           const spk = pemakaian.SPK;
           const prodIdBahan = pemakaian.ProdID_Bahan;
 
+          // LBK / NON_SPK hanya untuk penggunaan saja, tidak menghasilkan barang jadi
           if (pemakaian.Sumber === "NON_SPK" || pemakaian.Sumber === "LBK") {
-            const dept = getDeptFromLocOrRemark(
-              pemakaian.LocID_Bahan || pemakaian.Gudang,
-              pemakaian.Remark_Bahan,
-            );
-            // Sesuai requirement: Hanya tampilkan hasil dari departemen AS dan PL
-            if (dept === "AS" || dept === "PL") {
-              const key = `NON_SPK_${pemakaian.ProdID_Bahan}_${pemakaian.Remark_Bahan || pemakaian.LocID_Bahan}_${pemakaian.SPK}`;
-              if (!barangJadiKeySet.has(key)) {
-                barangJadiKeySet.add(key);
-                semuaBarangJadi.push({
-                  ProdID_Hasil: pemakaian.ProdID_Bahan,
-                  Departemen: dept,
-                  ItemID:
-                    pemakaian.Remark_Bahan && pemakaian.Remark_Bahan !== "-"
-                      ? pemakaian.Remark_Bahan.trim()
-                      : dept === "PL"
-                        ? "OBAT PLATING"
-                        : "KONSUMSI AS",
-                  NamaBarang: `Konsumsi ${dept === "PL" ? "Plating / IPAL" : "Assembly"} (${pemakaian.Remark_Bahan && pemakaian.Remark_Bahan !== "-" ? pemakaian.Remark_Bahan : pemakaian.Gudang || "Operasional"})`,
-                  Satuan: pemakaian.Satuan_Bahan || "KG",
-                  Jumlah: pemakaian.Jumlah_Bahan || 0,
-                  Jumlah_Kgs: pemakaian.Jumlah_Bahan || 0,
-                  Tanggal_Produksi: pemakaian.Tanggal_Produksi,
-                  SPK: pemakaian.SPK,
-                  PIC_Hasil: pemakaian.PIC_Bahan,
-                });
-              }
-            }
-          } else {
-            // 1. Prioritaskan pencocokan ProdID yang sama persis (batch run yang sama)
-            const hasilListByProdID =
-              prodIdBahan && prodIdBahan !== "-"
-                ? hasilByProdID.get(prodIdBahan) || []
-                : [];
+            continue;
+          }
 
-            for (const hasil of hasilListByProdID) {
+          // 1. Prioritaskan pencocokan ProdID yang sama persis (batch run yang sama)
+          const hasilListByProdID =
+            prodIdBahan && prodIdBahan !== "-"
+              ? hasilByProdID.get(prodIdBahan) || []
+              : [];
+
+          for (const hasil of hasilListByProdID) {
+            const key = `${hasil.ProdID_Hasil}_${hasil.ItemID_Hasil}_${hasil.SPK}`;
+            if (!barangJadiKeySet.has(key)) {
+              barangJadiKeySet.add(key);
+              semuaBarangJadi.push({
+                ProdID_Hasil: hasil.ProdID_Hasil,
+                Departemen: hasil.Departemen_Hasil || "-",
+                ItemID: hasil.ItemID_Hasil,
+                NamaBarang:
+                  hasil.NamaBarang_Hasil || hasil.ItemID_Hasil || "-",
+                Satuan: hasil.Satuan_Hasil || "PCS",
+                Jumlah: hasil.Jumlah_Hasil || 0,
+                Jumlah_Kgs: hasil.Jumlah_Hasil || 0,
+                Tanggal_Produksi: hasil.Tanggal_Hasil,
+                SPK: spk,
+                PIC_Hasil: hasil.PIC_Hasil,
+              });
+            }
+          }
+
+          // 2. Jika tidak ada hasil pada ProdID tersebut, cocokkan berdasarkan nomor SPK
+          if (hasilListByProdID.length === 0 && spk && spk !== "-") {
+            const hasilListBySPK = hasilBySPK.get(spk) || [];
+            for (const hasil of hasilListBySPK) {
               const key = `${hasil.ProdID_Hasil}_${hasil.ItemID_Hasil}_${hasil.SPK}`;
               if (!barangJadiKeySet.has(key)) {
                 barangJadiKeySet.add(key);
