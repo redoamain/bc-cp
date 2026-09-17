@@ -39,6 +39,9 @@ interface ProduksiUsage {
   Jumlah_Bahan: number;
   Satuan_Bahan?: string;
   PIC_Bahan: string;
+  Sumber?: string;
+  LocID_Bahan?: string;
+  Remark_Bahan?: string;
 }
 
 interface BarangJadi {

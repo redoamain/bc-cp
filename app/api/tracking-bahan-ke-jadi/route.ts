@@ -14,6 +14,18 @@ function normalizeSatuan(satuan?: string): string {
   return s;
 }
 
+// Fungsi menentukan departemen dari LocID, Gudang, atau Remark
+function getDeptFromLocOrRemark(locId?: string, remark?: string): string {
+  const loc = (locId || "").toUpperCase();
+  const rem = (remark || "").toUpperCase();
+  if (loc === "GUDPL" || loc.includes("PLATING") || rem.includes("PLATING") || rem.includes("LIMBAH")) return "PL";
+  if (loc === "GUDAS" || loc.includes("ASSEMBLY") || rem.includes("ASSEMBLY") || rem.includes("SORTIR")) return "AS";
+  if (loc === "GUDSP" || loc.includes("SPRAY") || rem.includes("SPRAY")) return "SP";
+  if (loc === "GUDIN" || loc.includes("INJEKSI") || rem.includes("INJEKSI")) return "IN";
+  if (loc === "GUDMO" || loc.includes("MOLDING") || rem.includes("MOLDING") || rem.includes("SPAREPART")) return "MO";
+  return loc || "GUD";
+}
+
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const startDate = url.searchParams.get("startDate");
@@ -38,7 +50,29 @@ export async function GET(request: Request) {
     const pemasukanData = pemasukanResult.recordset;
     console.log(`📦 Pemasukan data raw: ${pemasukanData.length} records`);
 
-    // 2. Ambil data BAHAN dari produksi (ItemType = 'B') disertai Satuan dari taGoods
+    // 1b. Query penerimaan barang masuk dari taOpnameIDT (LPB / Opname / Internal Masuk)
+    const idtQuery = `
+      SELECT 
+        dt.[MoveID],
+        dt.[MoveType],
+        CONVERT(DATE, dt.[MoveDate]) AS Tanggal_Masuk,
+        dt.[LocID],
+        dt.[ItemID],
+        dt.[Kgs] AS Jumlah,
+        COALESCE(dt.[Satuan], g.[SatuanKecil], 'KG') AS Satuan,
+        dt.[username],
+        hd.[Remark],
+        hd.[DocID],
+        COALESCE(g.[ItemName], g.[namebc], dt.[ItemID]) AS NamaBarang
+      FROM [cp].[dbo].[taOpnameIDT] AS dt
+      LEFT JOIN [cp].[dbo].[taOpnameIHD] AS hd 
+        ON dt.[MoveID] = hd.[MoveID] AND dt.[MoveType] = hd.[MoveType]
+      LEFT JOIN [cp].[dbo].[taGoods] AS g
+        ON dt.[ItemID] = g.[ItemID]
+      WHERE dt.[Kgs] > 0
+    `;
+
+    // 2. Ambil data BAHAN dari produksi SPK (ItemType = 'B') disertai Satuan dari taGoods
     const bahanQuery = `
       SELECT 
         hd.[ProdID] AS ProdID_Bahan,
@@ -47,13 +81,40 @@ export async function GET(request: Request) {
         dt.[ItemID] AS ItemID_Bahan,
         dt.[Kgs] AS Jumlah_Bahan,
         COALESCE(g.[SatuanKecil], 'KG') AS Satuan_Bahan,
-        dt.[UserName] AS PIC_Bahan
+        dt.[UserName] AS PIC_Bahan,
+        'SPK' AS Sumber
       FROM [cp].[dbo].[taPRProdHd] AS hd
       INNER JOIN [cp].[dbo].[taPRProdDt] AS dt 
         ON hd.[ProdID] = dt.[ProdID] AND hd.[ProdType] = dt.[ProdType]
       LEFT JOIN [cp].[dbo].[taGoods] AS g
         ON dt.[ItemID] = g.[ItemID]
       WHERE dt.[ItemType] = 'B'
+    `;
+
+    // 2b. Query penggunaan jika barang itu tidak menggunakan SPK tipe H atau B
+    const penggunaanNonSPKQuery = `
+      SELECT TOP (1000000)
+        hd.[MoveID] AS No_Transaksi,
+        g.[LocName] AS Gudang,
+        hd.[LocID],
+        CONVERT(DATE, hd.[MoveDate]) AS Tanggal,
+        hd.[Remark] AS Keterangan,
+        hd.[NoRator],
+        dt.[ItemID],
+        dt.[Bags],
+        dt.[Kgs],
+        dt.[HPPPrice], 
+        kr.[NamaJenis] as Kategori,
+        dt.[username],
+        COALESCE(i.[SatuanKecil], 'KG') AS Satuan
+      FROM [cp].[dbo].[taOpNameOHD] AS hd
+      INNER JOIN [cp].[dbo].[taOpNameODT]
+      AS dt ON hd.[MoveID] = dt.[MoveID] AND hd.[MoveType] = dt.[MoveType]
+      INNER JOIN [cp].[dbo].[taLocation] AS g ON hd.[LocID] = g.[LocID]
+      INNER JOIN [cp].[dbo].[taGoods] AS i ON dt.[ItemID] = i.[ItemID]
+      INNER JOIN [cp].[dbo].[taKindofGoods] AS kr ON kr.[KodeJenis] = i.[KodeJenis]
+      WHERE hd.[MoveType] in ('A','P')
+        AND dt.[Kgs] > 0
     `;
 
     // 3. Ambil data BARANG JADI (ItemType = 'H') - HANYA DARI DEPARTEMEN AS (ASSEMBLY) & PL (PLATING)
@@ -78,39 +139,71 @@ export async function GET(request: Request) {
     `;
 
     let bahanData = [];
+    let penggunaanNonSPKData = [];
+    let idtData = [];
     let hasilData = [];
 
     // PERBAIKAN TEMPORAL MISMATCH:
     // Cari pemakaian produksi mulai dari tanggal bahan masuk (@StartDate) hingga saat ini,
     // agar bahan yang masuk pada periode ini dan baru dipakai di tanggal berikutnya tetap terlacak.
     if (startDate) {
-      const req = pool.request();
-      req.input("StartDate", sql.Date, new Date(startDate));
-
-      const bahanResult = await req.query(`
+      const reqBahan = pool.request();
+      reqBahan.input("StartDate", sql.Date, new Date(startDate));
+      const bahanResult = await reqBahan.query(`
         ${bahanQuery}
         AND CONVERT(DATE, hd.[ProdDate]) >= @StartDate
       `);
       bahanData = bahanResult.recordset;
 
-      const hasilResult = await req.query(`
+      const reqHasil = pool.request();
+      reqHasil.input("StartDate", sql.Date, new Date(startDate));
+      const hasilResult = await reqHasil.query(`
         ${hasilQuery}
         AND CONVERT(DATE, hd.[ProdDate]) >= @StartDate
       `);
       hasilData = hasilResult.recordset;
+
+      const reqNonSPK = pool.request();
+      reqNonSPK.input("StartDate", sql.Date, new Date(startDate));
+      const nonSPKResult = await reqNonSPK.query(`
+        ${penggunaanNonSPKQuery}
+        AND CONVERT(DATE, hd.[MoveDate]) >= @StartDate
+      `);
+      penggunaanNonSPKData = nonSPKResult.recordset;
+
+      const reqIDT = pool.request();
+      reqIDT.input("StartDate", sql.Date, new Date(startDate));
+      reqIDT.input("EndDate", sql.Date, new Date(endDate || startDate));
+      const idtResult = await reqIDT.query(`
+        ${idtQuery}
+        AND CONVERT(DATE, dt.[MoveDate]) >= @StartDate
+        AND CONVERT(DATE, dt.[MoveDate]) <= @EndDate
+      `);
+      idtData = idtResult.recordset;
     } else {
       const bahanResult = await pool.request().query(bahanQuery);
       bahanData = bahanResult.recordset;
 
       const hasilResult = await pool.request().query(hasilQuery);
       hasilData = hasilResult.recordset;
+
+      const nonSPKResult = await pool.request().query(penggunaanNonSPKQuery);
+      penggunaanNonSPKData = nonSPKResult.recordset;
+
+      const idtResult = await pool.request().query(idtQuery);
+      idtData = idtResult.recordset;
     }
 
-    // Urutkan data berdasarkan tanggal produksi
+    // Urutkan data berdasarkan tanggal produksi / transaksi
     bahanData.sort(
       (a, b) =>
         new Date(b.Tanggal_Produksi).getTime() -
         new Date(a.Tanggal_Produksi).getTime(),
+    );
+    penggunaanNonSPKData.sort(
+      (a, b) =>
+        new Date(b.Tanggal).getTime() -
+        new Date(a.Tanggal).getTime(),
     );
     hasilData.sort(
       (a, b) =>
@@ -118,25 +211,57 @@ export async function GET(request: Request) {
         new Date(a.Tanggal_Hasil).getTime(),
     );
 
-    console.log(`📊 Bahan: ${bahanData.length}, Hasil: ${hasilData.length}`);
+    console.log(
+      `📊 Bahan SPK: ${bahanData.length}, Penggunaan Non-SPK: ${penggunaanNonSPKData.length}, Hasil: ${hasilData.length}, IDT: ${idtData.length}`,
+    );
 
-    // 4. Group bahan berdasarkan ItemID_Bahan (HANYA yang Jumlah > 0)
-    const bahanByItem = new Map<string, any[]>();
+    // 4a. Group bahan SPK berdasarkan ItemID_Bahan (HANYA yang Jumlah > 0)
+    const bahanSPKByItem = new Map<string, any[]>();
     for (const item of bahanData) {
       const itemId = item.ItemID_Bahan;
       if (!itemId) continue;
       if ((item.Jumlah_Bahan || 0) === 0) continue;
 
-      if (!bahanByItem.has(itemId)) {
-        bahanByItem.set(itemId, []);
+      if (!bahanSPKByItem.has(itemId)) {
+        bahanSPKByItem.set(itemId, []);
       }
-      bahanByItem.get(itemId)!.push({
+      bahanSPKByItem.get(itemId)!.push({
         ProdID_Bahan: item.ProdID_Bahan || "-",
         SPK: item.SPK || "-",
         Tanggal_Produksi: item.Tanggal_Produksi || "-",
         Jumlah_Bahan: item.Jumlah_Bahan || 0,
         Satuan_Bahan: normalizeSatuan(item.Satuan_Bahan) || "KG",
         PIC_Bahan: item.PIC_Bahan || "-",
+        Sumber: "SPK",
+      });
+    }
+
+    // 4b. Group penggunaan non-SPK berdasarkan ItemID (HANYA jika barang itu tidak H atau B)
+    const nonSPKByItem = new Map<string, any[]>();
+    for (const item of penggunaanNonSPKData) {
+      const itemId = item.ItemID;
+      if (!itemId) continue;
+      if ((item.Kgs || 0) === 0) continue;
+
+      if (!nonSPKByItem.has(itemId)) {
+        nonSPKByItem.set(itemId, []);
+      }
+      nonSPKByItem.get(itemId)!.push({
+        ProdID_Bahan: item.No_Transaksi || "-",
+        SPK: item.Keterangan
+          ? `LBK: ${item.No_Transaksi} (${String(item.Keterangan).trim()})`
+          : `LBK: ${item.No_Transaksi} (${item.Gudang || item.LocID || "-"})`,
+        Tanggal_Produksi: item.Tanggal || "-",
+        Jumlah_Bahan: item.Kgs || 0,
+        Satuan_Bahan: normalizeSatuan(item.Satuan) || "KG",
+        PIC_Bahan: item.username || "-",
+        Sumber: "NON_SPK",
+        LocID_Bahan: item.LocID || "-",
+        Gudang: item.Gudang || "-",
+        Remark_Bahan: item.Keterangan || "-",
+        NoRator: item.NoRator,
+        HPPPrice: item.HPPPrice,
+        Kategori: item.Kategori,
       });
     }
 
@@ -275,8 +400,79 @@ export async function GET(request: Request) {
       }
     }
 
+    // 6b. Agregasi penerimaan barang masuk dari taOpnameIDT (LPB / Opname / Internal Masuk)
+    for (const row of idtData) {
+      const itemId = String(row.ItemID || "").trim();
+      if (!itemId) continue;
+
+      const jumlah = Number(row.Jumlah) || 0;
+      const satuan = normalizeSatuan(row.Satuan) || "KG";
+      const nomorBPB = `LPB-${row.MoveID}`;
+      const tanggalBPB = row.Tanggal_Masuk
+        ? new Date(row.Tanggal_Masuk).toISOString().split("T")[0]
+        : null;
+      const pemasok = String(row.Remark || row.LocID || "INTERNAL").trim();
+      const jenisDokumen = row.MoveType === "R" ? "MUTASI MASUK" : "LPB";
+      const namaBahan = String(row.NamaBarang || itemId).trim();
+      const nomorPO = String(row.DocID || "").trim();
+      const nomorDokumen = String(row.MoveID || "").trim();
+
+      if (!pemasukanGrouped.has(itemId)) {
+        pemasukanGrouped.set(itemId, {
+          itemId,
+          namaBahan: namaBahan !== "-" ? namaBahan : itemId,
+          satuan: satuan,
+          totalJumlahMasuk: jumlah,
+          daftarPemasukan: [
+            {
+              nomorBPB,
+              tanggalBPB,
+              jumlah,
+              satuan,
+              pemasok,
+              jenisDokumen,
+              nomorPO,
+              nomorDokumen,
+            },
+          ],
+          nomorBPBList: [nomorBPB],
+          tanggalBPBList: tanggalBPB ? [tanggalBPB] : [],
+          pemasokList: pemasok ? [pemasok] : [],
+          jenisDokumenList: [jenisDokumen],
+        });
+      } else {
+        const entry = pemasukanGrouped.get(itemId)!;
+        // Jika bukan mutasi gudang internal ('R'), tambahkan ke totalJumlahMasuk
+        if (row.MoveType !== "R") {
+          entry.totalJumlahMasuk += jumlah;
+        }
+        entry.daftarPemasukan.push({
+          nomorBPB,
+          tanggalBPB,
+          jumlah,
+          satuan,
+          pemasok,
+          jenisDokumen,
+          nomorPO,
+          nomorDokumen,
+        });
+        if (nomorBPB && !entry.nomorBPBList.includes(nomorBPB)) {
+          entry.nomorBPBList.push(nomorBPB);
+        }
+        if (tanggalBPB && !entry.tanggalBPBList.includes(tanggalBPB)) {
+          entry.tanggalBPBList.push(tanggalBPB);
+        }
+        if (pemasok && !entry.pemasokList.includes(pemasok)) {
+          entry.pemasokList.push(pemasok);
+        }
+        if (jenisDokumen && !entry.jenisDokumenList.includes(jenisDokumen)) {
+          entry.jenisDokumenList.push(jenisDokumen);
+        }
+      }
+    }
+
     console.log(
-      `📦 Agregasi bahan unik: ${pemasukanGrouped.size} dari ${pemasukanData.length} records BPB`,
+      `📦 Agregasi bahan unik: ${pemasukanGrouped.size} dari ${pemasukanData.length} records BPB & ${idtData.length} records IDT`,
     );
 
     // 7. Fungsi get stock dengan port awareness dan timeout aman
@@ -316,7 +512,12 @@ export async function GET(request: Request) {
     const finalData = await Promise.all(
       groupedItems.map(async (group) => {
         const itemId = group.itemId;
-        const pemakaianList = bahanByItem.get(itemId) || [];
+        const spkList = bahanSPKByItem.get(itemId) || [];
+        const nonSPKList = nonSPKByItem.get(itemId) || [];
+
+        // JIKA BARANG ITU TIDAK H ATAU B (tidak menggunakan SPK), gunakan query taOpNameOHD & taOpNameODT:
+        const pemakaianList = spkList.length > 0 ? spkList : nonSPKList;
+
         const totalTerpakai = pemakaianList.reduce(
           (sum: number, p: { Jumlah_Bahan: number }) =>
             sum + (p.Jumlah_Bahan || 0),
@@ -342,36 +543,43 @@ export async function GET(request: Request) {
           const spk = pemakaian.SPK;
           const prodIdBahan = pemakaian.ProdID_Bahan;
 
-          // 1. Prioritaskan pencocokan ProdID yang sama persis (batch run yang sama)
-          const hasilListByProdID =
-            prodIdBahan && prodIdBahan !== "-"
-              ? hasilByProdID.get(prodIdBahan) || []
-              : [];
-
-          for (const hasil of hasilListByProdID) {
-            const key = `${hasil.ProdID_Hasil}_${hasil.ItemID_Hasil}_${hasil.SPK}`;
-            if (!barangJadiKeySet.has(key)) {
-              barangJadiKeySet.add(key);
-              semuaBarangJadi.push({
-                ProdID_Hasil: hasil.ProdID_Hasil,
-                Departemen: hasil.Departemen_Hasil || "-",
-                ItemID: hasil.ItemID_Hasil,
-                NamaBarang:
-                  hasil.NamaBarang_Hasil || hasil.ItemID_Hasil || "-",
-                Satuan: hasil.Satuan_Hasil || "PCS",
-                Jumlah: hasil.Jumlah_Hasil || 0,
-                Jumlah_Kgs: hasil.Jumlah_Hasil || 0,
-                Tanggal_Produksi: hasil.Tanggal_Hasil,
-                SPK: spk,
-                PIC_Hasil: hasil.PIC_Hasil,
-              });
+          if (pemakaian.Sumber === "NON_SPK" || pemakaian.Sumber === "LBK") {
+            const dept = getDeptFromLocOrRemark(
+              pemakaian.LocID_Bahan || pemakaian.Gudang,
+              pemakaian.Remark_Bahan,
+            );
+            // Sesuai requirement: Hanya tampilkan hasil dari departemen AS dan PL
+            if (dept === "AS" || dept === "PL") {
+              const key = `NON_SPK_${pemakaian.ProdID_Bahan}_${pemakaian.Remark_Bahan || pemakaian.LocID_Bahan}_${pemakaian.SPK}`;
+              if (!barangJadiKeySet.has(key)) {
+                barangJadiKeySet.add(key);
+                semuaBarangJadi.push({
+                  ProdID_Hasil: pemakaian.ProdID_Bahan,
+                  Departemen: dept,
+                  ItemID:
+                    pemakaian.Remark_Bahan && pemakaian.Remark_Bahan !== "-"
+                      ? pemakaian.Remark_Bahan.trim()
+                      : dept === "PL"
+                        ? "OBAT PLATING"
+                        : "KONSUMSI AS",
+                  NamaBarang: `Konsumsi ${dept === "PL" ? "Plating / IPAL" : "Assembly"} (${pemakaian.Remark_Bahan && pemakaian.Remark_Bahan !== "-" ? pemakaian.Remark_Bahan : pemakaian.Gudang || "Operasional"})`,
+                  Satuan: pemakaian.Satuan_Bahan || "KG",
+                  Jumlah: pemakaian.Jumlah_Bahan || 0,
+                  Jumlah_Kgs: pemakaian.Jumlah_Bahan || 0,
+                  Tanggal_Produksi: pemakaian.Tanggal_Produksi,
+                  SPK: pemakaian.SPK,
+                  PIC_Hasil: pemakaian.PIC_Bahan,
+                });
+              }
             }
-          }
+          } else {
+            // 1. Prioritaskan pencocokan ProdID yang sama persis (batch run yang sama)
+            const hasilListByProdID =
+              prodIdBahan && prodIdBahan !== "-"
+                ? hasilByProdID.get(prodIdBahan) || []
+                : [];
 
-          // 2. Jika tidak ada hasil pada ProdID tersebut, cocokkan berdasarkan nomor SPK
-          if (hasilListByProdID.length === 0 && spk && spk !== "-") {
-            const hasilListBySPK = hasilBySPK.get(spk) || [];
-            for (const hasil of hasilListBySPK) {
+            for (const hasil of hasilListByProdID) {
               const key = `${hasil.ProdID_Hasil}_${hasil.ItemID_Hasil}_${hasil.SPK}`;
               if (!barangJadiKeySet.has(key)) {
                 barangJadiKeySet.add(key);
@@ -388,6 +596,30 @@ export async function GET(request: Request) {
                   SPK: spk,
                   PIC_Hasil: hasil.PIC_Hasil,
                 });
+              }
+            }
+
+            // 2. Jika tidak ada hasil pada ProdID tersebut, cocokkan berdasarkan nomor SPK
+            if (hasilListByProdID.length === 0 && spk && spk !== "-") {
+              const hasilListBySPK = hasilBySPK.get(spk) || [];
+              for (const hasil of hasilListBySPK) {
+                const key = `${hasil.ProdID_Hasil}_${hasil.ItemID_Hasil}_${hasil.SPK}`;
+                if (!barangJadiKeySet.has(key)) {
+                  barangJadiKeySet.add(key);
+                  semuaBarangJadi.push({
+                    ProdID_Hasil: hasil.ProdID_Hasil,
+                    Departemen: hasil.Departemen_Hasil || "-",
+                    ItemID: hasil.ItemID_Hasil,
+                    NamaBarang:
+                      hasil.NamaBarang_Hasil || hasil.ItemID_Hasil || "-",
+                    Satuan: hasil.Satuan_Hasil || "PCS",
+                    Jumlah: hasil.Jumlah_Hasil || 0,
+                    Jumlah_Kgs: hasil.Jumlah_Hasil || 0,
+                    Tanggal_Produksi: hasil.Tanggal_Hasil,
+                    SPK: spk,
+                    PIC_Hasil: hasil.PIC_Hasil,
+                  });
+                }
               }
             }
           }
